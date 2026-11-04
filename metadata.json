@@ -1,0 +1,8 @@
+{
+  "name": "Sistema de Gestión Social - Alcaldía del Municipio Juan Antonio Sotillo",
+  "description": "Sistema de Gestión Social y Salud Municipal. Control de ciudadanos, historias médicas y asistencia farmacéutica de la Alcaldía del Municipio Juan Antonio Sotillo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

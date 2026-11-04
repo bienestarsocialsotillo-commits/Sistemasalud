@@ -1,0 +1,2 @@
+# Directorio para activos estáticos
+Coloque aquí el archivo logo.png para que se visualice en la aplicación.

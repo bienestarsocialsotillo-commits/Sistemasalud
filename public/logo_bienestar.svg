@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="socialGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="socialGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="socialGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0284c7" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Minimalist Social Emblem: Interlocking Heart & Caring Arms with Community Figures -->
+  <g filter="url(#glow)">
+    <!-- Outer Elegant Minimalist Heart Contour -->
+    <path d="M50 82 C26 65 15 48 15 33 C15 20 25 12 37 12 C44 12 48 16 50 19 C52 16 56 12 63 12 C75 12 85 20 85 33 C85 48 74 65 50 82 Z"
+          fill="none"
+          stroke="url(#socialGrad1)"
+          stroke-width="5"
+          stroke-linecap="round"
+          stroke-linejoin="round" />
+
+    <!-- Supporting Caring Hands Arc -->
+    <path d="M28 46 C34 60 42 66 50 67 C58 66 66 60 72 46"
+          fill="none"
+          stroke="url(#socialGrad2)"
+          stroke-width="4"
+          stroke-linecap="round" />
+
+    <!-- Minimalist People / Community Icons (Protected Together) -->
+    <!-- Center Person -->
+    <circle cx="50" cy="35" r="4.5" fill="url(#socialGrad2)" />
+    <path d="M43 51 C43 44 46.5 42 50 42 C53.5 42 57 44 57 51" fill="url(#socialGrad2)" />
+
+    <!-- Left Person -->
+    <circle cx="36" cy="32" r="3.8" fill="url(#socialGrad1)" />
+    <path d="M30 46 C30 40 33 38 36 38 C38.5 38 41 39.5 41.5 44" fill="url(#socialGrad1)" />
+
+    <!-- Right Person -->
+    <circle cx="64" cy="32" r="3.8" fill="url(#socialGrad3)" />
+    <path d="M58.5 44 C59 39.5 61.5 38 64 38 C67 38 70 40 70 46" fill="url(#socialGrad3)" />
+  </g>
+</svg>

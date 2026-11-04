@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny: cualquier ruta no especificada queda bloqueada
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Funciones globales de autenticación y estado
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Verificación de bloqueo: si el usuario está bloqueado, se niega todo acceso
+    function isNotBlocked() {
+      return isSignedIn() && (!userExists() || getUserData().get('blocked', false) != true);
+    }
+
+    // Super Administrador: único con correo del sistema o rol superadmin verificado
+    function isSuperAdmin() {
+      return isSignedIn() && isNotBlocked() && (
+        request.auth.token.email == 'direccioncondominiossotillo@gmail.com' ||
+        (userExists() && getUserData().get('role', '') == 'superadmin')
+      );
+    }
+
+    // Administrador: superadmin o admin activo no bloqueado
+    function isAdmin() {
+      return isSuperAdmin() || (
+        isSignedIn() && isNotBlocked() && (
+          userExists() && getUserData().get('role', '') in ['admin', 'superadmin']
+        )
+      );
+    }
+
+    // Editor: personal operativo no bloqueado
+    function isEditor() {
+      return isAdmin() || (
+        isSignedIn() && isNotBlocked() && (
+          userExists() && getUserData().get('role', '') in ['admin', 'editor', 'superadmin']
+        )
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validación segura de creación de usuario (evita escalamiento de privilegios por parte del cliente)
+    function isValidUserCreate(userId) {
+      let isSuperEmail = request.auth.token.email == 'direccioncondominiossotillo@gmail.com';
+      let allowedRole = isSuperEmail ? 'superadmin' : 'editor';
+      return isSuperAdmin() || (
+        request.auth.uid == userId &&
+        incoming().get('role', 'editor') == allowedRole &&
+        incoming().get('blocked', false) == false
+      );
+    }
+
+    // Validadores de integridad de datos
+    function isValidWorker(worker) {
+      return worker.fullName is string && worker.fullName.size() > 0 && worker.fullName.size() <= 200 &&
+             worker.dni is string && worker.dni.size() > 0 && worker.dni.size() <= 20 &&
+             worker.commune is string && worker.commune.size() > 0 && worker.commune.size() <= 100 &&
+             (worker.status in ['active', 'inactive', 'retired']);
+    }
+
+    function isValidMedicalHistory(history) {
+      return history.workerId is string && history.workerId.size() > 0 &&
+             history.personalHistory is map &&
+             history.familyHistory is map &&
+             (!('housingConditions' in history) || history.housingConditions is map);
+    }
+
+    function isValidEvaluation(evaluation) {
+      return evaluation.workerId is string && evaluation.workerId.size() > 0 &&
+             (evaluation.type in ['pre-employment', 'entry', 'periodic', 'exit', 'special']) &&
+             (evaluation.determination in ['fit', 'fit-with-restrictions', 'unfit']) &&
+             evaluation.diagnosis is string && evaluation.diagnosis.size() <= 2000 &&
+             evaluation.evaluatorId == request.auth.uid;
+    }
+
+    // Reglas de la Colección de Usuarios
+    match /users/{userId} {
+      allow read: if isSignedIn() && isNotBlocked();
+      allow create: if isSignedIn() && isValidUserCreate(userId);
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // Reglas de Beneficiarios / Expedientes
+    match /workers/{workerId} {
+      allow get, list: if isSignedIn() && isNotBlocked();
+      allow create: if isEditor() && isValidWorker(incoming());
+      allow update: if isEditor() && isValidWorker(incoming());
+      allow delete: if isAdmin() || (isEditor() && existing().createdBy == request.auth.uid);
+    }
+
+    // Historial Médico
+    match /workers/{workerId}/medical_history/{historyId} {
+      allow get, list: if isSignedIn() && isNotBlocked();
+      allow create: if isEditor() && historyId == 'baseline' && isValidMedicalHistory(incoming());
+      allow update: if isEditor() && historyId == 'baseline' && isValidMedicalHistory(incoming());
+      allow delete: if isEditor();
+    }
+
+    // Grupo de colección para estadísticas globales sin consultas N+1
+    match /{path=**}/medical_history/{historyId} {
+      allow read: if isSignedIn() && isNotBlocked();
+    }
+
+    // Evaluaciones Médicas
+    match /workers/{workerId}/evaluations/{evalId} {
+      allow get, list: if isSignedIn() && isNotBlocked();
+      allow create: if isEditor() && isValidId(evalId) && isValidEvaluation(incoming());
+      allow update: if isEditor() && isValidEvaluation(incoming());
+      allow delete: if isEditor();
+    }
+
+    // Grupo de colección para listado global de evaluaciones
+    match /{path=**}/evaluations/{evalId} {
+      allow read: if isSignedIn() && isNotBlocked();
+    }
+
+    // Farmacia y Recetas Médicas
+    match /medication_recipes/{recipeId} {
+      allow get, list: if isSignedIn() && isNotBlocked();
+      allow create, update: if isEditor();
+      allow delete: if isAdmin();
+    }
+  }
+}

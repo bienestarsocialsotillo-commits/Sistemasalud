@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "worker": {
+      "title": "Worker",
+      "description": "Personal and occupational data of the worker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "dni": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "gender": { "type": "string", "enum": ["M", "F", "Other"] },
+        "civilStatus": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "emergencyContact": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive", "retired"] },
+        "commune": { "type": "string" },
+        "sector": { "type": "string" },
+        "hasDisability": { "type": "boolean" },
+        "disabilityType": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "dni", "commune"]
+    },
+    "medical_history": {
+      "title": "Medical History",
+      "description": "Baseline medical records for a worker",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "personalHistory": { "type": "object" },
+        "familyHistory": { "type": "object" },
+        "housingConditions": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "evaluation": {
+      "title": "Medical Evaluation",
+      "description": "Specific medical exam results",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["pre-employment", "entry", "periodic", "exit", "special"] },
+        "physical": { "type": "object" },
+        "labs": { "type": "object" },
+        "diagnosis": { "type": "string" },
+        "recommendations": { "type": "string" },
+        "determination": { "type": "string", "enum": ["fit", "fit-with-restrictions", "unfit"] },
+        "evaluatorId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "medication_recipe": {
+      "title": "Medication Recipe",
+      "description": "Record of a prescribed medication",
+      "type": "object",
+      "properties": {
+        "workerId": { "type": "string" },
+        "medication": { "type": "string" },
+        "presentation": { "type": "string" },
+        "dosage": { "type": "string" },
+        "frequency": { "type": "string" },
+        "duration": { "type": "string" },
+        "quantity": { "type": "number" },
+        "commune": { "type": "string" },
+        "prescribedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "user_profile": {
+      "title": "User Profile",
+      "description": "User account data and RBAC roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "editor"] },
+        "fullName": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user_profile",
+      "description": "System users and roles"
+    },
+    "/workers/{workerId}": {
+      "schema": "worker",
+      "description": "Workers main collection"
+    },
+    "/workers/{workerId}/medical_history/baseline": {
+      "schema": "medical_history",
+      "description": "Worker baseline medical history"
+    },
+    "/workers/{workerId}/evaluations/{evalId}": {
+      "schema": "evaluation",
+      "description": "Worker specialized evaluations"
+    },
+    "/medication_recipes/{recipeId}": {
+      "schema": "medication_recipe",
+      "description": "Global log of prescribed medications for statistics"
+    }
+  }
+}
