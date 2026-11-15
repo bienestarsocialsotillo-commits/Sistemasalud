@@ -717,25 +717,7 @@ export default function Medications() {
           </Button>
 
           <Button 
-            variant="outline"
-            className="border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold px-4 h-11 uppercase text-xs tracking-wider shrink-0 gap-2 shadow-2xs" 
-            onClick={() => setIsNoReqModalOpen(true)}
-          >
-            <UserX className="w-4 h-4 text-amber-700" />
-            <span>Sin Requerimiento {isAdmin ? `(${workersWithoutRequirements.length})` : ''}</span>
-          </Button>
-
-          <Button 
-            variant="outline"
-            className="border-blue-300 bg-white hover:bg-blue-50 text-blue-950 font-bold px-4 h-11 uppercase text-xs tracking-wider shrink-0 gap-2 shadow-xs" 
-            onClick={() => setIsMatrixModalOpen(true)}
-          >
-            <Building2 className="w-4 h-4 text-blue-700" />
-            Matriz de Red Pública
-          </Button>
-
-          <Button 
-            className="bg-blue-900 hover:bg-blue-950 font-bold px-6 h-11 uppercase text-xs tracking-widest shrink-0 shadow-sm" 
+            className="bg-blue-900 hover:bg-blue-950 font-bold px-6 h-11 uppercase text-xs tracking-widest shrink-0 shadow-sm cursor-pointer" 
             onClick={() => {
               setPreselectedWorkerForRecipe(null);
               setIsDialogOpen(true);
@@ -749,31 +731,41 @@ export default function Medications() {
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open);
-        if (!open) setPreselectedWorkerForRecipe(null);
+        if (!open) {
+          setPreselectedWorkerForRecipe(null);
+        }
       }}>
         <DialogContent className="max-w-[96vw] md:max-w-[90vw] lg:max-w-4xl xl:max-w-5xl w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
           <DialogHeader className="p-3.5 sm:p-5 bg-slate-50 border-b border-slate-200">
             <DialogTitle className="uppercase font-black text-blue-900 text-base sm:text-lg text-center sm:text-left">
-              {preselectedWorkerForRecipe
-                ? `Registrar Solicitud / Entrega para: ${preselectedWorkerForRecipe.fullName}`
+              {preselectedWorkerForRecipe 
+                ? `Registrar Solicitud / Entrega para: ${preselectedWorkerForRecipe.fullName}` 
                 : "Registrar Solicitud, Entrega o Derivación Médica"}
             </DialogTitle>
           </DialogHeader>
           <div className="p-3 sm:p-6 md:p-7">
             <ErrorBoundary fallbackTitle="Error al cargar el formulario de solicitud o suplementos">
-              <RecipeForm 
-                workers={workers} 
-                workerId={preselectedWorkerForRecipe?.id}
-                workerName={preselectedWorkerForRecipe?.fullName}
-                commune={preselectedWorkerForRecipe?.commune}
-                hasDisability={preselectedWorkerForRecipe?.hasDisability}
-                existingRecipes={recipes}
-                onSuccess={() => { 
-                  setIsDialogOpen(false); 
-                  setPreselectedWorkerForRecipe(null);
-                  fetchData(); 
-                }} 
-              />
+              <div key={preselectedWorkerForRecipe?.id || 'standard-form'}>
+                <RecipeForm 
+                  workers={workers} 
+                  workerId={preselectedWorkerForRecipe?.id}
+                  workerName={preselectedWorkerForRecipe?.fullName}
+                  commune={preselectedWorkerForRecipe?.commune}
+                  hasDisability={preselectedWorkerForRecipe?.hasDisability}
+                  existingRecipes={recipes}
+                  onBatchSaved={() => {
+                    fetchData();
+                  }}
+                  onWorkerCreated={(newWorker) => {
+                    setWorkers(prev => [newWorker, ...prev]);
+                  }}
+                  onSuccess={() => { 
+                    setIsDialogOpen(false); 
+                    setPreselectedWorkerForRecipe(null);
+                    fetchData(); 
+                  }} 
+                />
+              </div>
             </ErrorBoundary>
           </div>
         </DialogContent>

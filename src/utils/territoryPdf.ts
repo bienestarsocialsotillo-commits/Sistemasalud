@@ -1193,19 +1193,64 @@ export function exportCommuneDensityReportPdf(
 }
 
 /**
- * Generates an Excel spreadsheet structured in three sheets:
- * 1. Resumen 21 Comunas Sotillo (Personas Cargadas vs Ayudas Entregadas Totales)
- * 2. Resumen Casos Foráneos
- * 3. Nómina Completa Seccionada
+ * Generates an Excel spreadsheet structured to match the Executive Report PDF 100%:
+ * Sheet 1: "Informe Ejecutivo Oficio" (Header, Top Macro KPIs, 21 Communes Matrix + Foráneos + Gran Total, Numeric Pending Balance, Footer)
+ * Sheet 2: "Casos en Espera (Detalle)" (Full nominal roster of pending requests)
+ * Sheet 3: "Padron Nominal por Comuna" (Full nominal census by territory)
  */
 export function exportAllCommunesExcel(
   workers: Worker[],
-  recipes?: MedicationRecipe[]
+  recipes?: MedicationRecipe[],
+  explicitPendingItems?: Array<{
+    id?: string;
+    citizenName: string;
+    citizenDni: string;
+    phone?: string;
+    commune: string;
+    sector: string;
+    item: string;
+    quantity: number;
+    categoryLabel: string;
+    daysWaiting: number;
+    isUrgent?: boolean;
+  }>
 ) {
   const wb = XLSX.utils.book_new();
 
+  const currentDateFormatted = new Date().toLocaleDateString("es-VE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  // Separate Sotillo Municipal Workers from Foreign Cases
   const sotilloWorkers = workers.filter(w => !isForeignerCommune(w.commune) && !w.isForeigner);
   const foreignWorkers = workers.filter(w => isForeignerCommune(w.commune) || !!w.isForeigner);
+
+  // Group Sotillo Workers by the 21 official communes
+  const communeMap = new Map<string, Worker[]>();
+  COMMUNES.forEach(c => communeMap.set(c.toUpperCase().trim(), []));
+
+  sotilloWorkers.forEach(w => {
+    const rawCommune = (w.commune || "").toUpperCase().trim();
+    if (communeMap.has(rawCommune)) {
+      communeMap.get(rawCommune)!.push(w);
+    } else {
+      const found = COMMUNES.find(c => c.toUpperCase().trim() === rawCommune);
+      if (found) {
+        communeMap.get(found.toUpperCase().trim())!.push(w);
+      }
+    }
+  });
+
+  // Count active communes
+  let activeSotilloCommunesCount = 0;
+  COMMUNES.forEach(c => {
+    if ((communeMap.get(c.toUpperCase().trim()) || []).length > 0) {
+      activeSotilloCommunesCount++;
+    }
+  });
+  const municipalCoveragePercent = ((activeSotilloCommunesCount / 21) * 100).toFixed(1);
 
   const workersMap = new Map(workers.map(w => [w.id, w]));
 
@@ -1216,6 +1261,7 @@ export function exportAllCommunesExcel(
     tech: number;
     supplies: number;
     derivations: number;
+    dispatches: number;
   }>();
   COMMUNES.forEach(c => communeDeliveredMap.set(c.trim().toUpperCase(), {
     total: 0,
@@ -1223,6 +1269,7 @@ export function exportAllCommunesExcel(
     tech: 0,
     supplies: 0,
     derivations: 0,
+    dispatches: 0,
   }));
 
   const foreignDelivered = {
@@ -1231,12 +1278,37 @@ export function exportAllCommunesExcel(
     tech: 0,
     supplies: 0,
     derivations: 0,
+    dispatches: 0,
   };
 
-  (recipes || []).forEach(r => {
-    if (r.status !== 'delivered') return;
+  const pendingStats = {
+    total: 0,
+    meds: 0,
+    tech: 0,
+    supplies: 0,
+    derivations: 0,
+  };
 
+  let totalDeliveredDispatches = 0;
+  const pendingRecipesList: MedicationRecipe[] = [];
+
+  (recipes || []).forEach(r => {
+    const isDelivered = r.status === 'delivered';
     const cat = getRecipeCategory(r);
+
+    if (!isDelivered) {
+      pendingStats.total++;
+      if (cat === 'medication') pendingStats.meds++;
+      else if (cat === 'technical_aid') pendingStats.tech++;
+      else if (cat === 'medical_supply') pendingStats.supplies++;
+      else if (cat === 'medical_derivation') pendingStats.derivations++;
+      pendingRecipesList.push(r);
+      return; // Only delivered aids are counted in the deliveries balance!
+    }
+
+    totalDeliveredDispatches++;
+    const units = getRecipeDeliveredAidUnits(r);
+
     let isForeign = isForeignerCommune(r.commune) || !!r.isForeigner;
     let targetCommune = (r.commune || "").trim().toUpperCase();
 
@@ -1254,14 +1326,13 @@ export function exportAllCommunesExcel(
       }
     }
 
-    const units = getRecipeDeliveredAidUnits(r);
-
     if (isForeign || !OFFICIAL_COMMUNES_SET.has(targetCommune)) {
       foreignDelivered.total += units.totalUnits;
       foreignDelivered.meds += units.medsUnits;
       foreignDelivered.tech += units.technicalAidUnits;
       foreignDelivered.supplies += units.medicalSupplyUnits;
       foreignDelivered.derivations += units.derivationUnits;
+      foreignDelivered.dispatches += 1;
     } else {
       const stats = communeDeliveredMap.get(targetCommune);
       if (stats) {
@@ -1270,53 +1341,376 @@ export function exportAllCommunesExcel(
         stats.tech += units.technicalAidUnits;
         stats.supplies += units.medicalSupplyUnits;
         stats.derivations += units.derivationUnits;
+        stats.dispatches += 1;
       }
     }
   });
 
-  // Sheet 1: Resumen 21 Comunas Sotillo (Referencia Numérica)
-  const sotilloSummary = COMMUNES.map(c => {
-    const norm = c.trim().toUpperCase();
-    const list = sotilloWorkers.filter(w => (w.commune || "").trim().toUpperCase() === norm);
-    const countPeople = list.length;
+  let sotilloMedsUnits = 0;
+  let sotilloTechUnits = 0;
+  let sotilloSupplyUnits = 0;
+  let sotilloDerivationUnits = 0;
+  let sotilloTotalAidsDelivered = 0;
+
+  communeDeliveredMap.forEach(stats => {
+    sotilloTotalAidsDelivered += stats.total;
+    sotilloMedsUnits += stats.meds;
+    sotilloTechUnits += stats.tech;
+    sotilloSupplyUnits += stats.supplies;
+    sotilloDerivationUnits += stats.derivations;
+  });
+
+  const foreignTotalAidsDelivered = foreignDelivered.total;
+  const foreignMedsUnits = foreignDelivered.meds;
+  const foreignTechUnits = foreignDelivered.tech;
+  const foreignSupplyUnits = foreignDelivered.supplies;
+  const foreignDerivationUnits = foreignDelivered.derivations;
+
+  // Global Grand Totals across the web app
+  const grandTotalPeople = workers.length;
+  const grandTotalAidsDelivered = sotilloTotalAidsDelivered + foreignTotalAidsDelivered;
+  const grandTotalMeds = sotilloMedsUnits + foreignMedsUnits;
+  const grandTotalTechAids = sotilloTechUnits + foreignTechUnits;
+  const grandTotalSupplies = sotilloSupplyUnits + foreignSupplyUnits;
+  const grandTotalDerivations = sotilloDerivationUnits + foreignDerivationUnits;
+
+  // =========================================================================
+  // HOJA 1: "Informe Ejecutivo Oficio" (Réplica exacta de la Página 1 del PDF)
+  // =========================================================================
+  const sheet1Data: (string | number)[][] = [
+    ["REPÚBLICA BOLIVARIANA DE VENEZUELA • ESTADO ANZOÁTEGUI"],
+    ["ALCALDÍA DEL MUNICIPIO BOLIVARIANO JUAN ANTONIO SOTILLO"],
+    ["DIRECCIÓN DE BIENESTAR SOCIAL • GESTIÓN ALCALDE PROF. JESÚS MARCANO TÁBATA"],
+    ["INFORME EJECUTIVO DE GESTIÓN TERRITORIAL (FORMATO PÁGINA OFICIO / LEGAL)"],
+    [
+      "Fecha de Emisión:",
+      currentDateFormatted,
+      "Ámbito Territorial:",
+      "21 Comunas + Casos Foráneos",
+      "Tipo de Documento:",
+      "Consolidado Oficial de Gestión y Salud"
+    ],
+    [],
+    ["1. BALANCE CONSOLIDADO GENERAL (MACRO TOTALES EJECUTIVOS DEL SISTEMA)"],
+    [
+      "INDICADOR MACRO",
+      "VALOR TOTAL",
+      "UNIDAD DE MEDIDA",
+      "DESGLOSE DE ALCANCE",
+      "COBERTURA / OBSERVACIÓN"
+    ],
+    [
+      "Personas Cargadas (Censadas)",
+      grandTotalPeople,
+      "Ciudadanos",
+      `Sotillo: ${sotilloWorkers.length} | Casos Foráneos: ${foreignWorkers.length}`,
+      "Padrón general cargado en el sistema"
+    ],
+    [
+      "Ayudas Entregadas Totales",
+      grandTotalAidsDelivered,
+      "Unidades",
+      `En ${totalDeliveredDispatches.toLocaleString()} Despachos Realizados`,
+      "100% Entregas verificadas y despachadas"
+    ],
+    [
+      "Fármaco - Medicamento",
+      grandTotalMeds,
+      "Unidades",
+      `Sotillo: ${sotilloMedsUnits} | Foráneos: ${foreignMedsUnits}`,
+      "Tratamientos médicos y fármacos dispensados"
+    ],
+    [
+      "Ayuda Humana (Movilidad)",
+      grandTotalTechAids,
+      "Unidades",
+      `Sotillo: ${sotilloTechUnits} | Foráneos: ${foreignTechUnits}`,
+      "Sillas de ruedas, andaderas, bastones y muletas"
+    ],
+    [
+      "Insumo Médico - Social",
+      grandTotalSupplies,
+      "Unidades",
+      `Sotillo: ${sotilloSupplyUnits} | Foráneos: ${foreignSupplyUnits}`,
+      "Pañales, canastillas y combos asistenciales"
+    ],
+    [
+      "Atención / Derivación Clínica",
+      grandTotalDerivations,
+      "Servicios",
+      `Sotillo: ${sotilloDerivationUnits} | Foráneos: ${foreignDerivationUnits}`,
+      "Consultas especializadas, ecos y laboratorios"
+    ],
+    [
+      "Cobertura Territorial Comunal",
+      `${activeSotilloCommunesCount} de 21`,
+      "Comunas Activas",
+      `${municipalCoveragePercent}% de Cobertura Activa`,
+      "Municipio Bolivariano Juan Antonio Sotillo"
+    ],
+    [],
+    ["2. MATRIZ EJECUTIVA TERRITORIAL: 21 COMUNAS DE SOTILLO Y ATENCIÓN FORÁNEA"],
+    [
+      "N°",
+      "COMUNA / TERRITORIO",
+      "PERSONAS CARGADAS",
+      "% PADRÓN",
+      "AYUDAS ENTREGADAS TOTALES",
+      "FÁRMACO - MEDICAMENTO",
+      "AYUDA HUMANA",
+      "INSUMO MÉDICO - SOCIAL",
+      "ATENCIÓN / DERIVACIÓN CLÍNICA"
+    ]
+  ];
+
+  // Filas de las 21 Comunas oficiales (1 a 21)
+  COMMUNES.forEach((communeName, idx) => {
+    const norm = communeName.trim().toUpperCase();
+    const cWorkers = communeMap.get(norm) || [];
+    const countPeople = cWorkers.length;
+    const percent = grandTotalPeople > 0 ? ((countPeople / grandTotalPeople) * 100).toFixed(1) : "0.0";
     const cDelivered = communeDeliveredMap.get(norm) || { total: 0, meds: 0, tech: 0, supplies: 0, derivations: 0 };
 
-    const disCount = list.filter(w => !!w.hasDisability).length;
-    const elderly = list.filter(w => {
-      const a = calculateAge(w.birthDate);
-      return a !== null && a >= 60;
-    }).length;
-
-    return {
-      "Comuna de Sotillo (Oficial)": c,
-      "Personas Cargadas": countPeople,
-      "% Padrón Sotillo": sotilloWorkers.length > 0 ? `${((countPeople / sotilloWorkers.length) * 100).toFixed(1)}%` : "0%",
-      "Ayudas Entregadas Totales (Unidades)": cDelivered.total,
-      "Fármaco - Medicamento": cDelivered.meds,
-      "Ayuda Humana": cDelivered.tech,
-      "Insumo Médico - Social": cDelivered.supplies,
-      "Atención / Derivación Clínica": cDelivered.derivations,
-      "Adultos Mayores (60+)": elderly,
-      "Personas con Discapacidad": disCount
-    };
+    sheet1Data.push([
+      idx + 1,
+      communeName.toUpperCase(),
+      countPeople,
+      `${percent}%`,
+      cDelivered.total,
+      cDelivered.meds,
+      cDelivered.tech,
+      cDelivered.supplies,
+      cDelivered.derivations
+    ]);
   });
-  const ws1 = XLSX.utils.json_to_sheet(sotilloSummary);
-  XLSX.utils.book_append_sheet(wb, ws1, "21 Comunas Sotillo");
 
-  // Sheet 2: Resumen Casos Foráneos (Referencia Numérica)
-  const foreignSummary = [{
-    "Categoría": "Atención Solidaria Extramunicipal (Foráneos)",
-    "Personas Cargadas Foráneas": foreignWorkers.length,
-    "% Padrón Total": workers.length > 0 ? `${((foreignWorkers.length / workers.length) * 100).toFixed(1)}%` : "0%",
-    "Ayudas Entregadas Totales (Unidades)": foreignDelivered.total,
-    "Fármaco - Medicamento": foreignDelivered.meds,
-    "Ayuda Humana": foreignDelivered.tech,
-    "Insumo Médico - Social": foreignDelivered.supplies,
-    "Atención / Derivación Clínica": foreignDelivered.derivations,
-    "Nota": "Casos de municipios vecinos atendidos por Bienestar Social Sotillo"
-  }];
-  const ws2 = XLSX.utils.json_to_sheet(foreignSummary);
-  XLSX.utils.book_append_sheet(wb, ws2, "Casos Foraneos");
+  // Fila de Casos Foráneos
+  const foreignPercent = grandTotalPeople > 0 ? ((foreignWorkers.length / grandTotalPeople) * 100).toFixed(1) : "0.0";
+  sheet1Data.push([
+    "EXT",
+    "CASOS FORÁNEOS (SOLIDARIDAD EXTRAMUNICIPAL)",
+    foreignWorkers.length,
+    `${foreignPercent}%`,
+    foreignTotalAidsDelivered,
+    foreignMedsUnits,
+    foreignTechUnits,
+    foreignSupplyUnits,
+    foreignDerivationUnits
+  ]);
+
+  // Fila de Gran Total Consolidado
+  sheet1Data.push([
+    "Σ",
+    "GRAN TOTAL CONSOLIDADO (SOTILLO + FORÁNEOS)",
+    grandTotalPeople,
+    "100.0%",
+    grandTotalAidsDelivered,
+    grandTotalMeds,
+    grandTotalTechAids,
+    grandTotalSupplies,
+    grandTotalDerivations
+  ]);
+
+  // Sección 3: Balance de Requerimientos en Espera (Estadístico)
+  sheet1Data.push(
+    [],
+    ["3. BALANCE NUMÉRICO DE REQUERIMIENTOS EN ESPERA (ESTADÍSTICO)"],
+    ["CATEGORÍA EN ESPERA", "TOTAL SOLICITUDES", "% DEL TOTAL EN ESPERA", "DESCRIPCIÓN DE SOLICITUDES"],
+    [
+      "Fármacos en Espera",
+      pendingStats.meds,
+      pendingStats.total > 0 ? `${((pendingStats.meds / pendingStats.total) * 100).toFixed(1)}%` : "0.0%",
+      "Tratamientos médicos y fármacos requeridos en lista de espera"
+    ],
+    [
+      "Ayudas Humanas en Espera",
+      pendingStats.tech,
+      pendingStats.total > 0 ? `${((pendingStats.tech / pendingStats.total) * 100).toFixed(1)}%` : "0.0%",
+      "Equipos de movilidad y ayudas técnicas requeridas"
+    ],
+    [
+      "Insumos Médicos en Espera",
+      pendingStats.supplies,
+      pendingStats.total > 0 ? `${((pendingStats.supplies / pendingStats.total) * 100).toFixed(1)}%` : "0.0%",
+      "Pañales de adulto/niño, canastillas y descartables"
+    ],
+    [
+      "Derivaciones Clínicas en Espera",
+      pendingStats.derivations,
+      pendingStats.total > 0 ? `${((pendingStats.derivations / pendingStats.total) * 100).toFixed(1)}%` : "0.0%",
+      "Consultas especializadas, ecosonogramas y exámenes de laboratorio"
+    ],
+    [
+      "TOTAL CASOS EN ESPERA",
+      pendingStats.total,
+      "100.0%",
+      "Total de ciudadanos con solicitud activa en espera de despacho"
+    ],
+    [],
+    ["Alcaldía del Municipio Bolivariano Juan Antonio Sotillo • Dirección de Bienestar Social • Gestión Alcalde Prof. Jesús Marcano Tábata"]
+  );
+
+  const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+
+  // Ancho óptimo de columnas de la Hoja 1 para visualización ejecutiva en Excel
+  ws1["!cols"] = [
+    { wch: 6 },   // N°
+    { wch: 48 },  // Comuna / Territorio / Indicador
+    { wch: 22 },  // Personas / Valor Total
+    { wch: 16 },  // % Padrón / Unidad de Medida
+    { wch: 28 },  // Ayudas Totales / Desglose
+    { wch: 24 },  // Fármaco - Medicamento
+    { wch: 22 },  // Ayuda Humana
+    { wch: 24 },  // Insumo Médico - Social
+    { wch: 28 },  // Atención / Derivación Clínica
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws1, "Informe Ejecutivo Oficio");
+
+  // =========================================================================
+  // HOJA 2: "Casos en Espera (Detalle)" (Nómina de Solicitudes Pendientes)
+  // =========================================================================
+  const sheet2Data: (string | number)[][] = [
+    ["NÓMINA DETALLADA DE REQUERIMIENTOS EN ESPERA (SEGUIMIENTO OPERATIVO)"],
+    ["ALCALDÍA DEL MUNICIPIO BOLIVARIANO JUAN ANTONIO SOTILLO • DIRECCIÓN DE BIENESTAR SOCIAL"],
+    ["Fecha de Generación:", currentDateFormatted, "Total Casos:", explicitPendingItems?.length || pendingRecipesList.length],
+    [],
+    [
+      "N°",
+      "BENEFICIARIO",
+      "CÉDULA",
+      "TELÉFONO",
+      "COMUNA",
+      "SECTOR / COMUNIDAD",
+      "RECURSO SOLICITADO",
+      "CANTIDAD",
+      "CATEGORÍA",
+      "DÍAS EN ESPERA",
+      "PRIORIDAD"
+    ]
+  ];
+
+  if (explicitPendingItems && explicitPendingItems.length > 0) {
+    explicitPendingItems.forEach((p, idx) => {
+      sheet2Data.push([
+        idx + 1,
+        (p.citizenName || "SIN NOMBRE").toUpperCase(),
+        p.citizenDni || "S/D",
+        p.phone || "NO REGISTRA",
+        (p.commune || "NO INDICA").toUpperCase(),
+        (p.sector || "NO INDICA").toUpperCase(),
+        (p.item || "REQUERIMIENTO").toUpperCase(),
+        p.quantity || 1,
+        (p.categoryLabel || "GENERAL").toUpperCase(),
+        p.daysWaiting || 0,
+        p.isUrgent ? "URGENTE" : "REGULAR"
+      ]);
+    });
+  } else {
+    pendingRecipesList.forEach((r, idx) => {
+      const w = r.workerId ? workersMap.get(r.workerId) : undefined;
+      const cat = getRecipeCategory(r);
+      const catLabel = cat === 'medication' ? 'Fármaco - Medicamento'
+        : cat === 'technical_aid' ? 'Ayuda Humana'
+        : cat === 'medical_supply' ? 'Insumo Médico - Social'
+        : 'Derivación Clínica';
+      
+      const resourceName = r.technicalAidType || r.medication || (cat === 'medication' ? 'Medicamento' : 'Ayuda Social');
+      const targetDate = r.deliveredAt || r.createdAt;
+      const daysWaiting = targetDate
+        ? Math.max(0, Math.floor((Date.now() - new Date(targetDate).getTime()) / 86400000))
+        : 0;
+
+      sheet2Data.push([
+        idx + 1,
+        (w?.fullName || "SIN NOMBRE").toUpperCase(),
+        w?.dni || "S/D",
+        w?.phone || "NO REGISTRA",
+        (w?.commune || r.commune || "NO INDICA").toUpperCase(),
+        (w?.sector || "NO INDICA").toUpperCase(),
+        resourceName.toUpperCase(),
+        r.quantity || 1,
+        catLabel.toUpperCase(),
+        daysWaiting,
+        daysWaiting > 15 ? "URGENTE" : "REGULAR"
+      ]);
+    });
+  }
+
+  const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+  ws2["!cols"] = [
+    { wch: 6 },
+    { wch: 36 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 32 },
+    { wch: 28 },
+    { wch: 34 },
+    { wch: 10 },
+    { wch: 24 },
+    { wch: 16 },
+    { wch: 14 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws2, "Casos en Espera (Detalle)");
+
+  // =========================================================================
+  // HOJA 3: "Padrón Nominal por Comuna" (Auditoría Territorial Completa)
+  // =========================================================================
+  const sheet3Data: (string | number)[][] = [
+    ["PADRÓN GENERAL DE CIUDADANOS CENSEDOS POR COMUNA"],
+    ["ALCALDÍA DEL MUNICIPIO BOLIVARIANO JUAN ANTONIO SOTILLO • DIRECCIÓN DE BIENESTAR SOCIAL"],
+    ["Fecha de Generación:", currentDateFormatted, "Total Registrados:", workers.length],
+    [],
+    [
+      "N°",
+      "CÉDULA",
+      "NOMBRES Y APELLIDOS",
+      "EDAD",
+      "SEXO",
+      "COMUNA / TERRITORIO",
+      "SECTOR / PROCEDENCIA",
+      "TELÉFONO",
+      "DISCAPACIDAD",
+      "ÁREA SOCIAL",
+      "HISTORIAL DE REQUERIMIENTOS REGISTRADOS"
+    ]
+  ];
+
+  workers.forEach((w, idx) => {
+    const age = calculateAge(w.birthDate);
+    const reqStr = getCitizenRequirements(w.id, recipes);
+    const isForeign = isForeignerCommune(w.commune) || !!w.isForeigner;
+
+    sheet3Data.push([
+      idx + 1,
+      w.dni || "S/D",
+      (w.fullName || "SIN NOMBRE").toUpperCase(),
+      age !== null ? `${age} años` : "S/D",
+      w.gender || "-",
+      (w.commune || (isForeign ? "CASO FORÁNEO" : "NO INDICA")).toUpperCase(),
+      (w.sector || w.originLocation || w.address || "NO INDICA").toUpperCase(),
+      w.phone || "NO REGISTRA",
+      w.hasDisability ? "SÍ" : "NO",
+      (w.socialArea || "GENERAL").replace(/_/g, " ").toUpperCase(),
+      reqStr.toUpperCase()
+    ]);
+  });
+
+  const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+  ws3["!cols"] = [
+    { wch: 6 },
+    { wch: 14 },
+    { wch: 38 },
+    { wch: 10 },
+    { wch: 8 },
+    { wch: 32 },
+    { wch: 30 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 45 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws3, "Padrón Nominal por Comuna");
 
   const fileName = `Informe_Ejecutivo_Territorial_Oficio_Sotillo_${new Date().toISOString().split("T")[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);

@@ -13,7 +13,8 @@ import { COMMUNES } from '@/constants';
 import { 
   isForeignerCommune, 
   getRecipeDeliveredAidUnits, 
-  exportAllCommunesSectionedPdf 
+  exportAllCommunesSectionedPdf,
+  exportAllCommunesExcel
 } from '@/utils/territoryPdf';
 import { getRecipeCategory } from '@/utils/categoryUtils';
 
@@ -75,6 +76,12 @@ export default function ExecutiveReportModal({
   const handleDownloadOficioPdf = () => {
     if (workers.length > 0) {
       exportAllCommunesSectionedPdf(workers, recipes);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    if (workers.length > 0) {
+      exportAllCommunesExcel(workers, recipes, pendingList);
     }
   };
 
@@ -331,6 +338,16 @@ export default function ExecutiveReportModal({
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Descargar</span> PDF Oficio
+            </Button>
+            <Button
+              onClick={handleDownloadExcel}
+              disabled={workers.length === 0}
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] sm:text-xs uppercase px-3 sm:px-4 h-8 sm:h-9 rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
+              title="Descargar archivo Excel con exactamente el mismo formato y datos del Informe Ejecutivo Oficio"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Descargar</span> Excel
             </Button>
             <Button
               onClick={handlePrint}

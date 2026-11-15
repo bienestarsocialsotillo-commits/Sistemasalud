@@ -67,7 +67,10 @@ import {
   UserCheck,
   Printer,
   DollarSign,
-  ShoppingBag
+  ShoppingBag,
+  Eye,
+  UserPlus,
+  Loader2
 } from "lucide-react";
 import { dataService } from '../lib/dataService';
 import { useAuth } from '../contexts/AuthContext';
@@ -327,23 +330,36 @@ function extractFirstErrorMessage(errObj: any): string {
 export default function RecipeForm({ 
   workers = [], 
   onSuccess,
+  onBatchSaved,
+  onWorkerCreated,
   workerId: initialWorkerId = "",
   workerName: initialWorkerName = "",
   commune: initialCommune = "",
   hasDisability: initialHasDisability = false,
   initialCategory = "medication",
+  initialDerivationService = "",
+  initialDerivationCenter = "",
+  initialDerivationCenterId = "",
+  initialDerivationReason = "",
   existingRecipes = []
 }: { 
   workers?: Worker[], 
   onSuccess?: () => void,
+  onBatchSaved?: () => void,
+  onWorkerCreated?: (worker: Worker) => void,
   workerId?: string,
   workerName?: string,
   commune?: string,
   hasDisability?: boolean,
   initialCategory?: 'medication' | 'technical_aid' | 'medical_supply' | 'medical_derivation',
+  initialDerivationService?: string,
+  initialDerivationCenter?: string,
+  initialDerivationCenterId?: string,
+  initialDerivationReason?: string,
   existingRecipes?: MedicationRecipe[]
 }) {
   const { user } = useAuth();
+  const [localWorkers, setLocalWorkers] = useState<Worker[]>(workers);
   const [recipeFileUrl, setRecipeFileUrl] = useState<string>("");
   const [recipeFileName, setRecipeFileName] = useState<string>("");
   const [isMatrixModalOpen, setIsMatrixModalOpen] = useState(false);
@@ -353,6 +369,26 @@ export default function RecipeForm({
   const [isCustomDeliveryNote, setIsCustomDeliveryNote] = useState<boolean>(false);
   const [workerRecipes, setWorkerRecipes] = useState<MedicationRecipe[]>(existingRecipes || []);
   const [isLoadingWorkerRecipes, setIsLoadingWorkerRecipes] = useState(false);
+  const saveAndContinueRef = React.useRef<boolean>(false);
+  const [batchSavedCount, setBatchSavedCount] = useState<number>(0);
+
+  // Quick citizen creation inline state (for unregistered jornada patients)
+  const [showQuickCreateCitizen, setShowQuickCreateCitizen] = useState<boolean>(false);
+  const [isCreatingQuickCitizen, setIsCreatingQuickCitizen] = useState<boolean>(false);
+  const [quickCitizenDni, setQuickCitizenDni] = useState<string>("");
+  const [quickCitizenName, setQuickCitizenName] = useState<string>("");
+  const [quickCitizenPhone, setQuickCitizenPhone] = useState<string>("");
+  const [quickCitizenCommune, setQuickCitizenCommune] = useState<string>(initialCommune || COMMUNES[0]);
+  const [quickCitizenSector, setQuickCitizenSector] = useState<string>("");
+  const [quickCitizenGender, setQuickCitizenGender] = useState<'M' | 'F'>('F');
+
+  useEffect(() => {
+    setLocalWorkers(prev => {
+      const incomingIds = new Set(workers.map(w => w.id));
+      const extras = prev.filter(w => !incomingIds.has(w.id));
+      return [...extras, ...workers];
+    });
+  }, [workers]);
 
   const defaultCategory = initialHasDisability 
     ? 'technical_aid' 
@@ -395,11 +431,11 @@ export default function RecipeForm({
       attentionDate: new Date().toISOString().split('T')[0],
       isUrgent: false,
       urgencyReason: "",
-      derivationService: "",
-      derivationCenter: "",
-      derivationCenterId: "",
+      derivationService: initialDerivationService || "",
+      derivationCenter: initialDerivationCenter || "",
+      derivationCenterId: initialDerivationCenterId || "",
       derivationStatus: "DISPONIBLE",
-      derivationReason: "",
+      derivationReason: initialDerivationReason || "",
       isDeliveredToRepresentative: false,
       representativeFullName: "",
       representativeDni: "",
@@ -449,15 +485,15 @@ export default function RecipeForm({
 
   // Selected worker object
   const selectedWorker = React.useMemo(() => {
-    return workers.find(w => w.id === selectedWorkerId);
-  }, [workers, selectedWorkerId]);
+    return localWorkers.find(w => w.id === selectedWorkerId);
+  }, [localWorkers, selectedWorkerId]);
 
   // Workers map for looking up names in representative audits
   const workersMap = React.useMemo(() => {
     const map = new Map<string, string>();
-    workers.forEach(w => map.set(w.id, w.fullName));
+    localWorkers.forEach(w => map.set(w.id, w.fullName));
     return map;
-  }, [workers]);
+  }, [localWorkers]);
 
   // Auto-fill representative if selected worker has defaultRepresentative
   useEffect(() => {
@@ -535,10 +571,17 @@ export default function RecipeForm({
     return checkRepresentativeAidLimit(allSystemRecipes, representativeDniWatch, referenceDate, workersMap);
   }, [isDeliveredToRepresentativeWatch, representativeDniWatch, allSystemRecipes, referenceDate, workersMap]);
 
-  // Dual Blocking Evaluation
+  // Special surgical campaign detection (Jornada de Operación de Cataratas - Clínica Colina)
+  const isCataractJornada = React.useMemo(() => {
+    if (activeCategory !== 'medical_derivation') return false;
+    const svc = (selectedDerivationService || '').toLowerCase();
+    return svc.includes('catarata');
+  }, [activeCategory, selectedDerivationService]);
+
+  // Dual Blocking Evaluation (Jornada de Operación de Cataratas is exempt from the 30-day aid limit)
   const isPatientBlocked = aidLimitStatus.isBlocked;
   const isRepBlocked = isDeliveredToRepresentativeWatch && representativeLimitStatus.isBlocked;
-  const isDualBlocked = isPatientBlocked || isRepBlocked;
+  const isDualBlocked = (isPatientBlocked || isRepBlocked) && !isCataractJornada;
 
   // Evaluation of citizen inactive or blocked status
   const isWorkerInactiveOrBlocked = selectedWorker?.status === 'inactive' || (selectedWorker as any)?.status === 'retired';
@@ -644,6 +687,90 @@ export default function RecipeForm({
       form.setValue("derivationCenter", "");
       form.setValue("derivationCenterId", "");
     }
+
+    // If Cataract Jornada is chosen and reason is empty, prefill clear reference
+    if (serviceName.toLowerCase().includes('catarata')) {
+      const currentReason = form.getValues("derivationReason");
+      if (!currentReason || !currentReason.trim()) {
+        form.setValue("derivationReason", "Jornada de Operación de Cataratas - Clínica Colina");
+      }
+    }
+  };
+
+  const handleQuickCreateCitizen = async () => {
+    const dniClean = quickCitizenDni.trim();
+    const nameClean = quickCitizenName.trim().toUpperCase();
+    if (dniClean.length < 5) {
+      toast.error("Cédula inválida", { description: "Ingrese una cédula válida (ej. V-12345678)." });
+      return;
+    }
+    if (nameClean.length < 3) {
+      toast.error("Nombre requerido", { description: "Ingrese el nombre y apellido completo del paciente." });
+      return;
+    }
+    if (!quickCitizenCommune) {
+      toast.error("Comuna requerida", { description: "Seleccione la comuna de residencia del paciente." });
+      return;
+    }
+
+    setIsCreatingQuickCitizen(true);
+    try {
+      const isForeign = quickCitizenCommune === OTHER_COMMUNE_OPTION || quickCitizenCommune.startsWith('OTRO');
+      const newWorkerPayload: Omit<Worker, 'id' | 'createdBy' | 'createdAt' | 'updatedAt'> = {
+        fullName: nameClean,
+        dni: dniClean.toUpperCase(),
+        birthDate: "1960-01-01",
+        gender: quickCitizenGender,
+        civilStatus: "Soltero(a)",
+        address: quickCitizenSector.trim().toUpperCase() || quickCitizenCommune,
+        phone: quickCitizenPhone.trim() || "0414-0000000",
+        email: "",
+        emergencyContact: "",
+        status: "active",
+        commune: quickCitizenCommune,
+        sector: quickCitizenSector.trim().toUpperCase() || "SECTOR PRINCIPAL",
+        socialArea: "ADULTO MAYOR",
+        isForeigner: isForeign,
+        originLocation: isForeign ? (quickCitizenSector.trim().toUpperCase() || "OTRO MUNICIPIO") : "",
+      };
+
+      const newId = await dataService.addWorker(newWorkerPayload, { allowReturnExisting: true });
+      if (!newId) throw new Error("No se pudo generar el ID del ciudadano.");
+
+      // Check if existing returned or newly created
+      const alreadyInList = localWorkers.find(w => w.id === newId);
+      const createdWorkerObj: Worker = alreadyInList || {
+        ...newWorkerPayload,
+        id: newId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (!alreadyInList) {
+        setLocalWorkers(prev => [createdWorkerObj, ...prev]);
+        onWorkerCreated?.(createdWorkerObj);
+      }
+
+      form.setValue("workerId", newId, { shouldValidate: true });
+      form.setValue("commune", createdWorkerObj.commune, { shouldValidate: true });
+      setIsPatientPickerOpen(false);
+      setShowQuickCreateCitizen(false);
+      setPatientSearch("");
+      setQuickCitizenDni("");
+      setQuickCitizenName("");
+      setQuickCitizenPhone("");
+      setQuickCitizenSector("");
+
+      toast.success(alreadyInList ? "Ciudadano encontrado y seleccionado" : "Ciudadano registrado y seleccionado", {
+        description: `${createdWorkerObj.fullName} (C.I. ${createdWorkerObj.dni}) listo para anexar atención.`
+      });
+    } catch (error: any) {
+      toast.error("Error al registrar ciudadano", {
+        description: error?.message || "Verifique los datos e intente nuevamente."
+      });
+    } finally {
+      setIsCreatingQuickCitizen(false);
+    }
   };
 
   const handleSelectCenter = (centerName: string, centerId: string, status: ServiceAvailability) => {
@@ -665,11 +792,16 @@ export default function RecipeForm({
       return;
     }
 
+    const submittingCataractJornada =
+      values.category === 'medical_derivation' &&
+      (values.derivationService || '').toLowerCase().includes('catarata');
+
     // ENFORCEMENT OF DUAL INTELLIGENT SOCIAL AID LIMIT (2 ayudas por 30 días hábiles)
+    // Exonerado para Jornada de Operación de Cataratas
     const isPatientBlockedNow = aidLimitStatus.isBlocked;
     const isRepBlockedNow = values.isDeliveredToRepresentative && representativeLimitStatus.isBlocked;
 
-    if ((isPatientBlockedNow || isRepBlockedNow) && !values.isUrgent) {
+    if ((isPatientBlockedNow || isRepBlockedNow) && !values.isUrgent && !submittingCataractJornada) {
       const reasonMsg = isPatientBlockedNow && isRepBlockedNow
         ? "Bloqueo Dual Inteligente: Tanto el paciente como el representante legal han alcanzado el límite de 2 ayudas en la ventana de 30 días hábiles."
         : isRepBlockedNow
@@ -1065,8 +1197,28 @@ export default function RecipeForm({
       
       setRecipeFileUrl("");
       setRecipeFileName("");
-      
-      onSuccess?.();
+
+      if (saveAndContinueRef.current && isDerivation && !initialWorkerName) {
+        saveAndContinueRef.current = false;
+        setBatchSavedCount(c => c + 1);
+        form.setValue("workerId", "");
+        form.setValue("commune", "");
+        form.setValue("originLocation", "");
+        form.setValue("isUrgent", false);
+        form.setValue("urgencyReason", "");
+        form.setValue("isDeliveredToRepresentative", false);
+        form.setValue("representativeFullName", "");
+        form.setValue("representativeDni", "");
+        form.setValue("representativeRelationship", "");
+        form.setValue("representativePhone", "");
+        setIsPatientPickerOpen(true);
+        setShowQuickCreateCitizen(false);
+        setPatientSearch("");
+        onBatchSaved?.();
+      } else {
+        saveAndContinueRef.current = false;
+        onSuccess?.();
+      }
     } catch (error: any) {
       console.error("Save Error:", error);
       let errorMsg = "Ocurrió un problema de comunicación con la base de datos.";
@@ -1325,8 +1477,8 @@ export default function RecipeForm({
                   control={form.control}
                   name="workerId"
                   render={({ field }) => {
-                    const selectedWorker = workers.find(w => w.id === field.value);
-                    const filteredPatients = workers.filter(w => {
+                    const selectedWorker = localWorkers.find(w => w.id === field.value);
+                    const filteredPatients = localWorkers.filter(w => {
                       if (!patientSearch.trim()) return true;
                       const q = patientSearch.trim().toLowerCase();
                       const qDigits = q.replace(/[^0-9]/g, '');
@@ -1341,9 +1493,14 @@ export default function RecipeForm({
 
                     return (
                       <FormItem className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Paciente / Beneficiario *
+                        <div className="flex items-center justify-between gap-2">
+                          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                            <span>Paciente / Beneficiario *</span>
+                            {batchSavedCount > 0 && (
+                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[9px] font-black px-1.5 py-0">
+                                {batchSavedCount} anexo(s) en jornada
+                              </Badge>
+                            )}
                           </FormLabel>
                           {selectedWorker && !initialWorkerName && (
                             <button
@@ -1464,11 +1621,144 @@ export default function RecipeForm({
                                   );
                                 })
                               ) : (
-                                <div className="text-center py-6 text-slate-400">
+                                <div className="text-center py-4 space-y-2 text-slate-500">
                                   <p className="text-xs font-bold">No se encontró ningún ciudadano con esa cédula o nombre.</p>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const digits = patientSearch.replace(/[^0-9]/g, '');
+                                      if (digits.length >= 5) {
+                                        setQuickCitizenDni(`V-${digits}`);
+                                        setQuickCitizenName("");
+                                      } else {
+                                        setQuickCitizenName(patientSearch.toUpperCase());
+                                      }
+                                      setShowQuickCreateCitizen(true);
+                                    }}
+                                    className="h-8 text-[10px] font-black uppercase border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-900 gap-1.5 rounded-lg"
+                                  >
+                                    <UserPlus className="w-3.5 h-3.5 text-blue-700" />
+                                    Registrar Nuevo Paciente Rápido
+                                  </Button>
                                 </div>
                               )}
                             </div>
+
+                            {!showQuickCreateCitizen ? (
+                              <div className="pt-1 border-t border-slate-200/80 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const digits = patientSearch.replace(/[^0-9]/g, '');
+                                    if (digits.length >= 5) setQuickCitizenDni(`V-${digits}`);
+                                    setShowQuickCreateCitizen(true);
+                                  }}
+                                  className="text-[10px] font-black uppercase text-blue-800 hover:text-blue-950 flex items-center gap-1 py-0.5"
+                                >
+                                  <UserPlus className="w-3 h-3" />
+                                  ¿Paciente no censado? Registrar aquí
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-2 p-3 rounded-xl border border-blue-300 bg-white space-y-2.5 animate-in fade-in duration-150 shadow-xs">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                                  <span className="text-[10px] font-black uppercase text-blue-950 flex items-center gap-1.5">
+                                    <UserPlus className="w-3.5 h-3.5 text-blue-700" />
+                                    Registro Exprés de Ciudadano (Jornada)
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowQuickCreateCitizen(false)}
+                                    className="text-slate-400 hover:text-slate-700 text-[10px] font-bold"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Cédula *</label>
+                                    <Input
+                                      placeholder="Ej. V-12345678"
+                                      value={quickCitizenDni}
+                                      onChange={(e) => setQuickCitizenDni(e.target.value)}
+                                      className="h-9 text-xs font-bold uppercase"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Teléfono</label>
+                                    <Input
+                                      placeholder="Ej. 0414-1234567"
+                                      value={quickCitizenPhone}
+                                      onChange={(e) => setQuickCitizenPhone(e.target.value)}
+                                      className="h-9 text-xs"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <div className="sm:col-span-2">
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Nombres y Apellidos *</label>
+                                    <Input
+                                      placeholder="Ej. MARÍA PÉREZ"
+                                      value={quickCitizenName}
+                                      onChange={(e) => setQuickCitizenName(e.target.value)}
+                                      className="h-9 text-xs font-bold uppercase"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Sexo</label>
+                                    <Select value={quickCitizenGender} onValueChange={(v: 'M' | 'F') => setQuickCitizenGender(v)}>
+                                      <SelectTrigger className="h-9 text-xs font-bold">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="F" className="text-xs font-bold">Femenino</SelectItem>
+                                        <SelectItem value="M" className="text-xs font-bold">Masculino</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Comuna *</label>
+                                    <Select value={quickCitizenCommune} onValueChange={setQuickCitizenCommune}>
+                                      <SelectTrigger className="h-9 text-xs font-bold">
+                                        <SelectValue placeholder="Seleccione Comuna" />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-56">
+                                        {COMMUNES.map(c => (
+                                          <SelectItem key={c} value={c} className="text-xs font-medium">{c}</SelectItem>
+                                        ))}
+                                        <SelectItem value={OTHER_COMMUNE_OPTION} className="text-xs font-bold text-amber-800">{OTHER_COMMUNE_OPTION}</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] font-bold uppercase text-slate-500 block mb-0.5">Sector / Comunidad</label>
+                                    <Input
+                                      placeholder="Ej. Pozuelos / Guanire"
+                                      value={quickCitizenSector}
+                                      onChange={(e) => setQuickCitizenSector(e.target.value)}
+                                      className="h-9 text-xs uppercase"
+                                    />
+                                  </div>
+                                </div>
+
+                                <Button
+                                  type="button"
+                                  disabled={isCreatingQuickCitizen}
+                                  onClick={handleQuickCreateCitizen}
+                                  className="w-full h-9 bg-blue-900 hover:bg-blue-950 text-white text-[10px] font-black uppercase tracking-wider rounded-lg gap-1.5"
+                                >
+                                  {isCreatingQuickCitizen ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                  {isCreatingQuickCitizen ? "Guardando ciudadano..." : "Guardar y Seleccionar Paciente"}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                         <FormMessage />
@@ -1563,7 +1853,11 @@ export default function RecipeForm({
                       }`}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-black/5">
                           <div className="flex items-center gap-2.5">
-                            {aidLimitStatus.isBlocked ? (
+                            {isCataractJornada && aidLimitStatus.isBlocked ? (
+                              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                <Eye className="w-4 h-4" />
+                              </div>
+                            ) : aidLimitStatus.isBlocked ? (
                               <div className="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                                 <Lock className="w-4 h-4" />
                               </div>
@@ -1580,13 +1874,17 @@ export default function RecipeForm({
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs font-black uppercase tracking-wider">Control de Frecuencia de Ayudas</span>
                                 <Badge variant="outline" className={`text-[10px] font-black uppercase px-2 py-0.5 border ${
-                                  aidLimitStatus.isBlocked
+                                  isCataractJornada && aidLimitStatus.isBlocked
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : aidLimitStatus.isBlocked
                                     ? 'bg-rose-100 text-rose-800 border-rose-300'
                                     : aidLimitStatus.totalAidsInWindow === 1
                                     ? 'bg-amber-100 text-amber-800 border-amber-300'
                                     : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                 }`}>
-                                  {aidLimitStatus.isBlocked 
+                                  {isCataractJornada && aidLimitStatus.isBlocked
+                                    ? 'Exonerado por Jornada Cataratas'
+                                    : aidLimitStatus.isBlocked 
                                     ? 'Bloqueo Temporal Activo (2/2)' 
                                     : aidLimitStatus.totalAidsInWindow === 1
                                     ? 'Alerta Preventiva (1/2)'
@@ -1594,7 +1892,15 @@ export default function RecipeForm({
                                 </Badge>
                               </div>
                               <p className="text-[11px] opacity-80 mt-0.5">
-                                Parámetro normativo: Máximo <strong className="font-bold">2 ayudas sociales</strong> en un lapso de <strong className="font-bold">30 días hábiles</strong>.
+                                {isCataractJornada && aidLimitStatus.isBlocked ? (
+                                  <span className="text-emerald-900 font-bold">
+                                    Exención Quirúrgica Activa: La Jornada de Operación de Cataratas (Clínica Colina) está exenta del límite de 30 días hábiles.
+                                  </span>
+                                ) : (
+                                  <>
+                                    Parámetro normativo: Máximo <strong className="font-bold">2 ayudas sociales</strong> en un lapso de <strong className="font-bold">30 días hábiles</strong>.
+                                  </>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1603,7 +1909,7 @@ export default function RecipeForm({
                             <span className="text-xs font-black block">
                               {aidLimitStatus.totalAidsInWindow} de 2 ayudas computadas
                             </span>
-                            {aidLimitStatus.isBlocked && aidLimitStatus.estimatedRenewalDate && (
+                            {aidLimitStatus.isBlocked && !isCataractJornada && aidLimitStatus.estimatedRenewalDate && (
                               <span className="text-[10px] font-bold text-rose-800 bg-rose-100/90 px-2 py-0.5 rounded-md inline-block mt-0.5 border border-rose-200">
                                 Próxima fecha habilitada: {aidLimitStatus.formattedRenewalDate || formatFriendlyDate(aidLimitStatus.estimatedRenewalDate)} ({aidLimitStatus.businessDaysUntilRenewal || 0} d. hábiles restantes)
                               </span>
@@ -3146,6 +3452,7 @@ export default function RecipeForm({
                       <p className="text-[9px] font-black uppercase text-slate-400">Atenciones Frecuentes:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {[
+                          "Jornada de Operación de Cataratas",
                           "Laboratorio",
                           "Rayos X (RX)",
                           "Ecosonografía / Eco",
@@ -3159,20 +3466,26 @@ export default function RecipeForm({
                           "Oftalmología / Salud Visual",
                           "Odontología / Salud Bucal",
                           "Trastornos Neurodesarrollo"
-                        ].map((serviceQuick) => (
-                          <button
-                            key={serviceQuick}
-                            type="button"
-                            onClick={() => handleSelectService(serviceQuick)}
-                            className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border transition-all ${
-                              selectedDerivationService === serviceQuick
-                                ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                            }`}
-                          >
-                            {serviceQuick}
-                          </button>
-                        ))}
+                        ].map((serviceQuick) => {
+                          const isCataractBtn = serviceQuick === "Jornada de Operación de Cataratas";
+                          return (
+                            <button
+                              key={serviceQuick}
+                              type="button"
+                              onClick={() => handleSelectService(serviceQuick)}
+                              className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${
+                                selectedDerivationService === serviceQuick
+                                  ? 'bg-blue-900 text-white border-blue-900 shadow-xs'
+                                  : isCataractBtn
+                                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {isCataractBtn && <Eye className="w-3 h-3" />}
+                              <span>{serviceQuick}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -3276,37 +3589,55 @@ export default function RecipeForm({
                       render={({ field }) => (
                         <FormItem className="space-y-1.5 pt-1">
                           <div className="flex items-center justify-between">
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 flex items-center gap-1.5">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-slate-700 flex items-center gap-1.5 flex-wrap">
                               <span>Detalle de la Ayuda / Exámenes de Laboratorio / Observación Clínica</span>
                               {selectedDerivationCenter?.includes("Santa Ana") && (
                                 <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
                                   Convenio Clínica Santa Ana
                                 </span>
                               )}
+                              {selectedDerivationCenter?.includes("Colina") && (
+                                <span className="bg-blue-100 text-blue-900 text-[9px] font-bold px-2 py-0.5 rounded-full border border-blue-300">
+                                  Convenio Clínica Colina
+                                </span>
+                              )}
                             </FormLabel>
                           </div>
                           <FormControl>
                             <Input 
-                              placeholder="Ej. Clínica Santa Ana: Perfil 20, Hematología Completa, Química Sanguínea, Consulta Cardiología..." 
+                              placeholder={
+                                isCataractJornada
+                                  ? "Ej. Operación de Cataratas - Ojo Derecho / Izquierdo / Bilateral - Jornada Clínica Colina"
+                                  : "Ej. Clínica Santa Ana: Perfil 20, Hematología Completa, Química Sanguínea, Consulta Cardiología..."
+                              }
                               className="h-11 rounded-xl text-xs bg-slate-50/50 focus:bg-white" 
                               {...field} 
                             />
                           </FormControl>
                           <div className="flex flex-wrap items-center gap-1.5 pt-1">
                             <span className="text-[9px] font-bold text-slate-400 uppercase">Sugerencias rápidas:</span>
-                            {[
-                              "Hematología Completa + Química",
-                              "Perfil 20 + Orina y Heces",
-                              "Perfil Lipídico + Glicemia",
-                              "Ecografía Abdominal / Pélvica",
-                              "Evaluación Médica Especializada"
-                            ].map((sug) => (
+                            {(isCataractJornada
+                              ? [
+                                  "Ojo Derecho (OD)",
+                                  "Ojo Izquierdo (OI)",
+                                  "Bilateral (Ambos Ojos)",
+                                  "Operación Realizada en Clínica Colina",
+                                  "Valoración Pre-Operatoria / Lente Intraocular"
+                                ]
+                              : [
+                                  "Hematología Completa + Química",
+                                  "Perfil 20 + Orina y Heces",
+                                  "Perfil Lipídico + Glicemia",
+                                  "Ecografía Abdominal / Pélvica",
+                                  "Evaluación Médica Especializada"
+                                ]
+                            ).map((sug) => (
                               <button
                                 key={sug}
                                 type="button"
                                 onClick={() => {
                                   const current = field.value || "";
-                                  const newVal = current ? `${current}, ${sug}` : sug;
+                                  const newVal = current ? `${current} • ${sug}` : sug;
                                   field.onChange(newVal);
                                 }}
                                 className="text-[9px] font-semibold text-slate-600 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 px-2 py-0.5 rounded-md transition-colors"
@@ -3491,15 +3822,41 @@ export default function RecipeForm({
                 {isSubmitting ? "Procesando Excepción Dual..." : "Registrar Ayuda con Salto de Urgencia"}
               </Button>
             ) : activeCategory === 'medical_derivation' ? (
-              <Button 
-                key="btn-derivation"
-                type="submit" 
-                disabled={isSubmitting}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 font-black uppercase text-xs tracking-wider h-12 w-full sm:w-auto rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                {isSubmitting ? "Registrando Derivación..." : "Registrar Requerimiento de Derivación"}
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+                {!initialWorkerName && (
+                  <Button
+                    key="btn-derivation-batch"
+                    type="submit"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      saveAndContinueRef.current = true;
+                    }}
+                    variant="outline"
+                    className="border-blue-800 bg-blue-50 hover:bg-blue-100 text-blue-950 px-5 font-black uppercase text-xs tracking-wider h-12 w-full sm:w-auto rounded-xl flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <UserPlus className="w-4 h-4 text-blue-800" />
+                    {isSubmitting && saveAndContinueRef.current
+                      ? "Guardando..."
+                      : "Guardar y Anexar Otro Paciente"}
+                  </Button>
+                )}
+                <Button 
+                  key="btn-derivation"
+                  type="submit" 
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    saveAndContinueRef.current = false;
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 font-black uppercase text-xs tracking-wider h-12 w-full sm:w-auto rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-5 h-5" />
+                  {isSubmitting && !saveAndContinueRef.current
+                    ? "Registrando Derivación..."
+                    : isCataractJornada
+                      ? "Registrar Operación de Cataratas"
+                      : "Registrar Requerimiento de Derivación"}
+                </Button>
+              </div>
             ) : activeDeliveryMode === 'delivered' ? (
               <Button 
                 key="btn-delivered"

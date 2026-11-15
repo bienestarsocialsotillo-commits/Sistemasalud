@@ -85,6 +85,13 @@ export const HEALTH_CENTERS: HealthCenter[] = [
     isConvenio: true,
   },
   {
+    id: 'clinica_colina',
+    name: 'Clínica Colina',
+    shortName: 'Clínica Colina',
+    type: 'Clínica en Convenio Quirúrgico / Oftalmología',
+    isConvenio: true,
+  },
+  {
     id: 'other_convenio',
     name: 'Otra Clínica / Centro en Convenio',
     shortName: 'Otro Convenio',
@@ -433,7 +440,28 @@ export const SERVICES_MATRIX: ServiceMatrixItem[] = [
       asic_cueva_guanire: 'NO DISPONIBLE',
       asic_paraiso: 'NO DISPONIBLE',
       clinica_santa_ana: 'DISPONIBLE',
+      clinica_colina: 'DISPONIBLE',
       other_convenio: 'DISPONIBLE',
+    }
+  },
+  {
+    id: 'jornada_cataratas',
+    name: 'Jornada de Operación de Cataratas',
+    category: 'specialty',
+    availability: {
+      jesus_nazareth: 'NO DISPONIBLE',
+      ivss_guaraguao: 'NO DISPONIBLE',
+      ambulatorio_guanire: 'NO DISPONIBLE',
+      clinica_municipal_sotillo: 'NO DISPONIBLE',
+      ivss_las_garzas: 'NO DISPONIBLE',
+      hospital_razetti: 'NO DISPONIBLE',
+      asic_fogade: 'NO DISPONIBLE',
+      asic_la_tecnica: 'NO DISPONIBLE',
+      asic_cueva_guanire: 'NO DISPONIBLE',
+      asic_paraiso: 'NO DISPONIBLE',
+      clinica_santa_ana: 'NO DISPONIBLE',
+      clinica_colina: 'DISPONIBLE',
+      other_convenio: 'ESPECIALIZADO',
     }
   },
   {

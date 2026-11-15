@@ -51,7 +51,7 @@ import { format, startOfDay, startOfWeek, startOfMonth, isAfter, isSameDay, diff
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { COMMUNES, OTHER_COMMUNE_OPTION, cleanItemDisplayName, normalizeItemKey } from '@/constants';
-import { isForeignerCommune, getRecipeDeliveredAidUnits } from '@/utils/territoryPdf';
+import { isForeignerCommune, getRecipeDeliveredAidUnits, exportAllCommunesExcel } from '@/utils/territoryPdf';
 import CommunePatientsModal from '@/components/CommunePatientsModal';
 import WorkerExpediente from '@/components/WorkerExpediente';
 import ExecutiveReportModal from '@/components/ExecutiveReportModal';
@@ -452,64 +452,11 @@ export default function Dashboard() {
 
   const communeFilterLabel = communeFilter === 'all' ? 'Todas las Comunas (Municipio Sotillo)' : communeFilter;
 
-  // 1-Click Excel Export
+  // 1-Click Excel Export (Harmonized 100% with Executive Report & PDF format)
   const handleExportExcel = () => {
     try {
-      // 1. Resumen sheet
-      const summaryData = [
-        ["REPORTE EJECUTIVO DE GESTIÓN SOCIAL - MUNICIPIO JUAN ANTONIO SOTILLO"],
-        ["Fecha de Generación:", format(new Date(), "dd/MM/yyyy HH:mm:ss")],
-        ["Filtro Temporal:", timeFilterLabel],
-        ["Ámbito Territorial:", communeFilterLabel],
-        [],
-        ["INDICADOR MACRO", "VALOR", "DETALLE"],
-        ["Población Censada", filteredWorkers.length, `${vulnerableCount} casos de alta vulnerabilidad`],
-        ["Tasa de Cumplimiento", `${complianceRate}%`, `${deliveredRequests} entregadas de ${totalRequests} solicitudes`],
-        ["Ayudas Humanas Totales", techAidsTotal, `${techAidsDelivered} entregadas, ${techAidsPending} en espera`],
-        ["Medicamentos e Insumos", medicationsTotal, `${medicationsDelivered} dispensados, ${medicationsPending} en espera`],
-        ["Comunas Abordadas", `${activeCommunesCount} de ${totalCommunesCount}`, `${Math.round((activeCommunesCount / totalCommunesCount) * 100)}% de cobertura territorial`]
-      ];
-
-      // 2. Ranking Comunal sheet
-      const communeData = [
-        ["#", "COMUNA / TERRITORIO", "SOLICITUDES TOTALES", "PORCENTAJE DE DEMANDA"],
-        ...communeRanking.map((c, i) => [
-          i + 1,
-          c.name,
-          c.total,
-          totalRequests > 0 ? `${Math.round((c.total / totalRequests) * 100)}%` : '0%'
-        ])
-      ];
-
-      // 3. Pendientes sheet
-      const pendingSheetData = [
-        ["BENEFICIARIO", "CÉDULA", "TELÉFONO", "COMUNA", "SECTOR", "RECURSO", "CANTIDAD", "TIPO", "DÍAS EN ESPERA", "ESTADO"],
-        ...pendingItems.map(p => [
-          p.citizenName,
-          p.citizenDni,
-          p.phone || 'N/A',
-          p.commune,
-          p.sector,
-          p.item,
-          p.quantity,
-          p.categoryLabel,
-          p.daysWaiting,
-          p.isUrgent ? 'URGENTE' : 'REGULAR'
-        ])
-      ];
-
-      const wb = XLSX.utils.book_new();
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      const wsCommunes = XLSX.utils.aoa_to_sheet(communeData);
-      const wsPending = XLSX.utils.aoa_to_sheet(pendingSheetData);
-
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen General");
-      XLSX.utils.book_append_sheet(wb, wsCommunes, "Demanda Territorial");
-      XLSX.utils.book_append_sheet(wb, wsPending, "Casos en Espera");
-
-      const fileName = `Informe_Gestion_Sotillo_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      toast.success("Reporte Excel exportado correctamente");
+      exportAllCommunesExcel(workers, categoryStats.baseRecipes, pendingItems);
+      toast.success("Informe Ejecutivo exportado a Excel con el formato oficial del PDF");
     } catch (err) {
       console.error(err);
       toast.error("Error al exportar archivo Excel");
