@@ -2,41 +2,45 @@
   "entities": {
     "worker": {
       "title": "Worker",
-      "description": "Personal and occupational data of the worker",
+      "description": "Personal and occupational data of the citizen/beneficiary",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "fullName": { "type": "string" },
-        "dni": { "type": "string" },
+        "fullName": { "type": "string", "maxLength": 200 },
+        "dni": { "type": "string", "maxLength": 30 },
         "birthDate": { "type": "string", "format": "date" },
         "gender": { "type": "string", "enum": ["M", "F", "Other"] },
         "civilStatus": { "type": "string" },
-        "address": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
+        "address": { "type": "string", "maxLength": 500 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
         "emergencyContact": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "inactive", "retired"] },
-        "commune": { "type": "string" },
-        "sector": { "type": "string" },
+        "commune": { "type": "string", "maxLength": 150 },
+        "sector": { "type": "string", "maxLength": 200 },
         "hasDisability": { "type": "boolean" },
         "disabilityType": { "type": "string" },
+        "isForeigner": { "type": "boolean" },
+        "originLocation": { "type": "string" },
         "createdBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["fullName", "dni", "commune"]
+      "required": ["fullName", "dni", "commune", "status"]
     },
     "medical_history": {
       "title": "Medical History",
-      "description": "Baseline medical records for a worker",
+      "description": "Baseline medical records for a beneficiary",
       "type": "object",
       "properties": {
         "workerId": { "type": "string" },
         "personalHistory": { "type": "object" },
         "familyHistory": { "type": "object" },
         "housingConditions": { "type": "object" },
+        "pathology": { "type": "string", "maxLength": 2000 },
         "updatedAt": { "type": "string", "format": "date-time" }
-      }
+      },
+      "required": ["workerId", "personalHistory", "familyHistory"]
     },
     "evaluation": {
       "title": "Medical Evaluation",
@@ -47,41 +51,53 @@
         "type": { "type": "string", "enum": ["pre-employment", "entry", "periodic", "exit", "special"] },
         "physical": { "type": "object" },
         "labs": { "type": "object" },
-        "diagnosis": { "type": "string" },
-        "recommendations": { "type": "string" },
+        "diagnosis": { "type": "string", "maxLength": 2000 },
+        "recommendations": { "type": "string", "maxLength": 2000 },
         "determination": { "type": "string", "enum": ["fit", "fit-with-restrictions", "unfit"] },
         "evaluatorId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
-      }
+      },
+      "required": ["workerId", "type", "diagnosis", "determination", "evaluatorId"]
     },
     "medication_recipe": {
-      "title": "Medication Recipe",
-      "description": "Record of a prescribed medication",
+      "title": "Medication Recipe / Social Aid / Derivation",
+      "description": "Record of prescribed medication, technical aid, medical supply, or clinical derivation",
       "type": "object",
       "properties": {
-        "workerId": { "type": "string" },
-        "medication": { "type": "string" },
+        "workerId": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "enum": ["medication", "technical_aid", "medical_supply", "medical_derivation"] },
+        "medication": { "type": "string", "maxLength": 500 },
         "presentation": { "type": "string" },
         "dosage": { "type": "string" },
         "frequency": { "type": "string" },
         "duration": { "type": "string" },
         "quantity": { "type": "number" },
-        "commune": { "type": "string" },
-        "prescribedBy": { "type": "string" },
+        "commune": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["pending", "delivered"] },
+        "derivationService": { "type": "string" },
+        "derivationCenter": { "type": "string" },
+        "derivationCenterId": { "type": "string" },
+        "derivationStatus": { "type": "string", "enum": ["DISPONIBLE", "ESPECIALIZADO"] },
+        "derivationReason": { "type": "string" },
+        "prescribedBy": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" }
-      }
+      },
+      "required": ["workerId", "medication", "commune", "prescribedBy"]
     },
     "user_profile": {
       "title": "User Profile",
       "description": "User account data and RBAC roles",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["admin", "editor"] },
-        "fullName": { "type": "string" },
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["superadmin", "admin", "editor"] },
+        "fullName": { "type": "string", "maxLength": 200 },
+        "photoURL": { "type": "string", "maxLength": 2000 },
+        "blocked": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
-      }
+      },
+      "required": ["uid", "email", "role", "fullName"]
     }
   },
   "firestore": {
@@ -91,7 +107,7 @@
     },
     "/workers/{workerId}": {
       "schema": "worker",
-      "description": "Workers main collection"
+      "description": "Workers and citizens main collection"
     },
     "/workers/{workerId}/medical_history/baseline": {
       "schema": "medical_history",
@@ -103,7 +119,7 @@
     },
     "/medication_recipes/{recipeId}": {
       "schema": "medication_recipe",
-      "description": "Global log of prescribed medications for statistics"
+      "description": "Global log of prescribed medications, social aids, and derivations"
     }
   }
 }

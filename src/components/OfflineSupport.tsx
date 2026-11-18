@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { COMMUNES } from "@/constants";
 import { dataService } from "@/lib/dataService";
+import { auth } from "@/lib/firebase";
 import { toast } from "sonner";
 
 interface OfflineRecord {
@@ -262,9 +263,20 @@ export default function OfflineSupport() {
     toast.loading("Procesando planilla con Inteligencia Artificial de Gemini...");
 
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        toast.dismiss();
+        toast.error("Debe iniciar sesión para procesar planillas con IA.");
+        setParsing(false);
+        return;
+      }
+
       const response = await fetch("/api/parse-form", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           fileBase64,
           mimeType: fileBase64.split(";")[0]?.replace("data:", "") || "image/jpeg"

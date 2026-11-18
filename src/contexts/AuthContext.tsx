@@ -26,9 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        if (!firebaseUser.emailVerified) {
+          toast.error("Su correo electrónico debe estar verificado para acceder al sistema.");
+          setUser(null);
+          await signOut(auth);
+          setLoading(false);
+          return;
+        }
+
         let profile = await dataService.getUserProfile(firebaseUser.uid);
         
-        const isSuperAdminEmail = firebaseUser.email === SUPER_ADMIN_EMAIL;
+        const isSuperAdminEmail = firebaseUser.emailVerified && firebaseUser.email === SUPER_ADMIN_EMAIL;
 
         if (!profile) {
           // Check if this is the super admin or default editor

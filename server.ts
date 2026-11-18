@@ -2,10 +2,43 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import firebaseConfig from "./firebase-applet-config.json";
+
+async function verifyFirebaseIdToken(idToken: string): Promise<{ uid: string; email?: string; emailVerified?: boolean } | null> {
+  try {
+    const resp = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(firebaseConfig.apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    if (!resp.ok) return null;
+    const data: any = await resp.json();
+    const user = data?.users?.[0];
+    if (!user || !user.localId || user.disabled) return null;
+    return {
+      uid: user.localId,
+      email: user.email,
+      emailVerified: Boolean(user.emailVerified),
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Security headers (compatible with iframe embedding in AI Studio)
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    next();
+  });
 
   // Middleware with high limits for base64 file payloads
   app.use(express.json({ limit: "20mb" }));
@@ -16,12 +49,22 @@ async function startServer() {
     res.json({ status: "ok", municipality: "Juan Antonio Sotillo" });
   });
 
-  // AI-powered Census/Form Parser
+  // AI-powered Census/Form Parser (protected by Firebase ID token verification)
   app.post("/api/parse-form", async (req, res) => {
     try {
+      const authHeader = req.headers.authorization || "";
+      const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+      if (!token) {
+        return res.status(401).json({ error: "No autorizado: se requiere sesión autenticada." });
+      }
+      const verifiedUser = await verifyFirebaseIdToken(token);
+      if (!verifiedUser || !verifiedUser.emailVerified) {
+        return res.status(401).json({ error: "Token de sesión inválido o correo no verificado." });
+      }
+
       const { fileBase64, mimeType } = req.body;
-      if (!fileBase64) {
-        return res.status(400).json({ error: "No se proporcionó ningún archivo en base64" });
+      if (!fileBase64 || typeof fileBase64 !== "string") {
+        return res.status(400).json({ error: "No se proporcionó ningún archivo en base64 válido" });
       }
 
       // Strip potential base64 data URI header
@@ -34,6 +77,18 @@ async function startServer() {
           detectedMimeType = parts[0].replace("data:", "");
           rawBase64 = parts[1];
         }
+      }
+
+      const ALLOWED_MIME_TYPES = new Set([
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "application/pdf"
+      ]);
+      if (!ALLOWED_MIME_TYPES.has(detectedMimeType.toLowerCase())) {
+        return res.status(400).json({ error: "Tipo de archivo no permitido. Solo se aceptan imágenes (JPG, PNG, WEBP) o PDF." });
       }
 
       const apiKey = process.env.GEMINI_API_KEY;

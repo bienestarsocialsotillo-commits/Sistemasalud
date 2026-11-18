@@ -1,18 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny: cualquier ruta no especificada queda bloqueada
+    // Default deny: cualquier ruta no especificada queda bloqueada por defecto
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Funciones globales de autenticación y estado
-    function isSignedIn() {
-      return request.auth != null;
+    // Funciones globales de autenticación, verificación de correo y estado
+    function isEmailVerified() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
-    function isEmailVerified() {
-      return request.auth.token.email_verified == true;
+    function isSignedIn() {
+      return request.auth != null && isEmailVerified();
     }
 
     function incoming() {
@@ -31,15 +31,15 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    // Verificación de bloqueo: si el usuario está bloqueado, se niega todo acceso
+    // Verificación de bloqueo: si el usuario está bloqueado o no verificado, se niega todo acceso
     function isNotBlocked() {
       return isSignedIn() && (!userExists() || getUserData().get('blocked', false) != true);
     }
 
-    // Super Administrador: único con correo del sistema o rol superadmin verificado
+    // Super Administrador: correo institucional verificado o rol superadmin activo
     function isSuperAdmin() {
-      return isSignedIn() && isNotBlocked() && (
-        request.auth.token.email == 'direccioncondominiossotillo@gmail.com' ||
+      return isNotBlocked() && (
+        (request.auth.token.email == 'direccioncondominiossotillo@gmail.com' && isEmailVerified()) ||
         (userExists() && getUserData().get('role', '') == 'superadmin')
       );
     }
@@ -47,105 +47,167 @@ service cloud.firestore {
     // Administrador: superadmin o admin activo no bloqueado
     function isAdmin() {
       return isSuperAdmin() || (
-        isSignedIn() && isNotBlocked() && (
-          userExists() && getUserData().get('role', '') in ['admin', 'superadmin']
-        )
+        isNotBlocked() &&
+        userExists() &&
+        getUserData().get('role', '') in ['admin', 'superadmin']
       );
     }
 
-    // Editor: personal operativo no bloqueado
+    // Editor: personal operativo verificado y no bloqueado
     function isEditor() {
       return isAdmin() || (
-        isSignedIn() && isNotBlocked() && (
-          userExists() && getUserData().get('role', '') in ['admin', 'editor', 'superadmin']
-        )
+        isNotBlocked() &&
+        userExists() &&
+        getUserData().get('role', '') in ['admin', 'editor', 'superadmin']
       );
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Validación segura de creación de usuario (evita escalamiento de privilegios por parte del cliente)
+    // Validación segura de creación de perfil de usuario (evita escalamiento de privilegios)
     function isValidUserCreate(userId) {
-      let isSuperEmail = request.auth.token.email == 'direccioncondominiossotillo@gmail.com';
+      let isSuperEmail = isEmailVerified() && request.auth.token.email == 'direccioncondominiossotillo@gmail.com';
       let allowedRole = isSuperEmail ? 'superadmin' : 'editor';
-      return isSuperAdmin() || (
-        request.auth.uid == userId &&
-        incoming().get('role', 'editor') == allowedRole &&
-        incoming().get('blocked', false) == false
-      );
+      return incoming().keys().hasAll(['uid', 'email', 'role', 'fullName']) &&
+             incoming().keys().hasOnly(['uid', 'email', 'role', 'fullName', 'photoURL', 'blocked', 'updatedAt']) &&
+             incoming().uid is string && incoming().uid == userId && incoming().uid.size() <= 128 &&
+             incoming().email is string && incoming().email.size() <= 200 &&
+             incoming().fullName is string && incoming().fullName.size() > 0 && incoming().fullName.size() <= 200 &&
+             (!('photoURL' in incoming()) || (incoming().photoURL is string && incoming().photoURL.size() <= 2000)) &&
+             (isSuperAdmin() || (
+               request.auth.uid == userId &&
+               incoming().role == allowedRole &&
+               incoming().get('blocked', false) == false
+             ));
     }
 
-    // Validadores de integridad de datos
+    function isValidUserUpdate(userId) {
+      return (!('uid' in incoming()) || (incoming().uid is string && incoming().uid == userId)) &&
+             (!('role' in incoming()) || (incoming().role in ['superadmin', 'admin', 'editor'])) &&
+             (!('blocked' in incoming()) || (incoming().blocked is bool)) &&
+             (!('fullName' in incoming()) || (incoming().fullName is string && incoming().fullName.size() > 0 && incoming().fullName.size() <= 200)) &&
+             (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 200)) &&
+             incoming().keys().size() <= 10;
+    }
+
+    // Validadores estrictos de integridad de datos y límites volumétricos (Anti-DoW)
     function isValidWorker(worker) {
       return worker.fullName is string && worker.fullName.size() > 0 && worker.fullName.size() <= 200 &&
-             worker.dni is string && worker.dni.size() > 0 && worker.dni.size() <= 20 &&
-             worker.commune is string && worker.commune.size() > 0 && worker.commune.size() <= 100 &&
-             (worker.status in ['active', 'inactive', 'retired']);
+             worker.dni is string && worker.dni.size() > 0 && worker.dni.size() <= 30 &&
+             worker.commune is string && worker.commune.size() > 0 && worker.commune.size() <= 150 &&
+             (worker.status in ['active', 'inactive', 'retired']) &&
+             (!('birthDate' in worker) || (worker.birthDate is string && worker.birthDate.size() <= 30)) &&
+             (!('gender' in worker) || (worker.gender in ['M', 'F', 'Other'])) &&
+             (!('phone' in worker) || (worker.phone is string && worker.phone.size() <= 50)) &&
+             (!('email' in worker) || (worker.email is string && worker.email.size() <= 200)) &&
+             (!('address' in worker) || (worker.address is string && worker.address.size() <= 500)) &&
+             (!('sector' in worker) || (worker.sector is string && worker.sector.size() <= 200)) &&
+             (!('familyMembers' in worker) || (worker.familyMembers is list && worker.familyMembers.size() <= 50)) &&
+             (!('socialAreas' in worker) || (worker.socialAreas is list && worker.socialAreas.size() <= 20)) &&
+             worker.keys().size() <= 45;
     }
 
-    function isValidMedicalHistory(history) {
-      return history.workerId is string && history.workerId.size() > 0 &&
+    function isValidMedicalHistory(history, workerId) {
+      return history.workerId is string && history.workerId == workerId &&
              history.personalHistory is map &&
              history.familyHistory is map &&
-             (!('housingConditions' in history) || history.housingConditions is map);
+             (!('housingConditions' in history) || history.housingConditions is map) &&
+             (!('pathology' in history) || (history.pathology is string && history.pathology.size() <= 2000)) &&
+             history.keys().size() <= 25;
     }
 
-    function isValidEvaluation(evaluation) {
-      return evaluation.workerId is string && evaluation.workerId.size() > 0 &&
+    function isValidEvaluation(evaluation, workerId) {
+      return evaluation.workerId is string && evaluation.workerId == workerId &&
              (evaluation.type in ['pre-employment', 'entry', 'periodic', 'exit', 'special']) &&
              (evaluation.determination in ['fit', 'fit-with-restrictions', 'unfit']) &&
              evaluation.diagnosis is string && evaluation.diagnosis.size() <= 2000 &&
-             evaluation.evaluatorId == request.auth.uid;
+             (!('recommendations' in evaluation) || (evaluation.recommendations is string && evaluation.recommendations.size() <= 2000)) &&
+             evaluation.evaluatorId is string && evaluation.evaluatorId.size() > 0 && evaluation.evaluatorId.size() <= 128 &&
+             evaluation.keys().size() <= 20;
     }
 
-    // Reglas de la Colección de Usuarios
+    function isValidMedicationRecipe(recipe) {
+      return recipe.workerId is string && recipe.workerId.size() > 0 && recipe.workerId.size() <= 128 &&
+             recipe.medication is string && recipe.medication.size() > 0 && recipe.medication.size() <= 500 &&
+             recipe.commune is string && recipe.commune.size() > 0 && recipe.commune.size() <= 150 &&
+             recipe.prescribedBy is string && recipe.prescribedBy.size() > 0 && recipe.prescribedBy.size() <= 128 &&
+             (!('status' in recipe) || (recipe.status in ['pending', 'delivered'])) &&
+             (!('category' in recipe) || (recipe.category in ['medication', 'technical_aid', 'medical_supply', 'medical_derivation'])) &&
+             (!('quantity' in recipe) || (recipe.quantity is number && recipe.quantity >= 0 && recipe.quantity <= 100000)) &&
+             (!('recipeFileUrl' in recipe) || (recipe.recipeFileUrl is string && recipe.recipeFileUrl.size() <= 900000)) &&
+             (!('medications' in recipe) || (recipe.medications is list && recipe.medications.size() <= 50)) &&
+             (!('medicalSupplies' in recipe) || (recipe.medicalSupplies is list && recipe.medicalSupplies.size() <= 50)) &&
+             recipe.keys().size() <= 55;
+    }
+
+    // Reglas de la Colección de Usuarios (PII restringido)
     match /users/{userId} {
-      allow read: if isSignedIn() && isNotBlocked();
-      allow create: if isSignedIn() && isValidUserCreate(userId);
-      allow update, delete: if isSuperAdmin();
+      allow get: if isValidId(userId) && ((isNotBlocked() && request.auth.uid == userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isSignedIn() && isValidUserCreate(userId);
+      allow update: if isValidId(userId) && isSuperAdmin() && isValidUserUpdate(userId);
+      allow delete: if isValidId(userId) && isSuperAdmin();
     }
 
     // Reglas de Beneficiarios / Expedientes
     match /workers/{workerId} {
-      allow get, list: if isSignedIn() && isNotBlocked();
-      allow create: if isEditor() && isValidWorker(incoming());
-      allow update: if isEditor() && isValidWorker(incoming());
-      allow delete: if isAdmin() || (isEditor() && existing().createdBy == request.auth.uid);
+      allow get: if isValidId(workerId) && isNotBlocked();
+      allow list: if isNotBlocked();
+      allow create: if isValidId(workerId) && isEditor() && isValidWorker(incoming()) &&
+                       (!('createdBy' in incoming()) || incoming().createdBy == request.auth.uid);
+      allow update: if isValidId(workerId) && isEditor() && isValidWorker(incoming()) &&
+                       (!('createdBy' in existing()) || !('createdBy' in incoming()) || incoming().createdBy == existing().createdBy);
+      allow delete: if isValidId(workerId) && (isAdmin() || (isEditor() && existing().get('createdBy', '') == request.auth.uid));
     }
 
     // Historial Médico
     match /workers/{workerId}/medical_history/{historyId} {
-      allow get, list: if isSignedIn() && isNotBlocked();
-      allow create: if isEditor() && historyId == 'baseline' && isValidMedicalHistory(incoming());
-      allow update: if isEditor() && historyId == 'baseline' && isValidMedicalHistory(incoming());
-      allow delete: if isEditor();
+      allow get: if isValidId(workerId) && isValidId(historyId) && isNotBlocked();
+      allow list: if isValidId(workerId) && isNotBlocked();
+      allow create, update: if isValidId(workerId) && historyId == 'baseline' && isEditor() &&
+                               isValidMedicalHistory(incoming(), workerId) &&
+                               exists(/databases/$(database)/documents/workers/$(workerId));
+      allow delete: if isValidId(workerId) && isValidId(historyId) && isAdmin();
     }
 
     // Grupo de colección para estadísticas globales sin consultas N+1
     match /{path=**}/medical_history/{historyId} {
-      allow read: if isSignedIn() && isNotBlocked();
+      allow read: if isNotBlocked();
     }
 
     // Evaluaciones Médicas
     match /workers/{workerId}/evaluations/{evalId} {
-      allow get, list: if isSignedIn() && isNotBlocked();
-      allow create: if isEditor() && isValidId(evalId) && isValidEvaluation(incoming());
-      allow update: if isEditor() && isValidEvaluation(incoming());
-      allow delete: if isEditor();
+      allow get: if isValidId(workerId) && isValidId(evalId) && isNotBlocked();
+      allow list: if isValidId(workerId) && isNotBlocked();
+      allow create: if isValidId(workerId) && isValidId(evalId) && isEditor() &&
+                       isValidEvaluation(incoming(), workerId) &&
+                       incoming().evaluatorId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/workers/$(workerId));
+      allow update: if isValidId(workerId) && isValidId(evalId) && isEditor() &&
+                       isValidEvaluation(incoming(), workerId) &&
+                       (!('evaluatorId' in existing()) || incoming().evaluatorId == existing().evaluatorId);
+      allow delete: if isValidId(workerId) && isValidId(evalId) && isAdmin();
     }
 
     // Grupo de colección para listado global de evaluaciones
     match /{path=**}/evaluations/{evalId} {
-      allow read: if isSignedIn() && isNotBlocked();
+      allow read: if isNotBlocked();
     }
 
-    // Farmacia y Recetas Médicas
+    // Farmacia, Ayudas Técnicas, Insumos y Derivaciones Médicas
     match /medication_recipes/{recipeId} {
-      allow get, list: if isSignedIn() && isNotBlocked();
-      allow create, update: if isEditor();
-      allow delete: if isAdmin();
+      allow get: if isValidId(recipeId) && isNotBlocked();
+      allow list: if isNotBlocked();
+      allow create: if isValidId(recipeId) && isEditor() &&
+                       isValidMedicationRecipe(incoming()) &&
+                       incoming().prescribedBy == request.auth.uid &&
+                       exists(/databases/$(database)/documents/workers/$(incoming().workerId));
+      allow update: if isValidId(recipeId) && isAdmin() &&
+                       isValidMedicationRecipe(incoming()) &&
+                       (!('prescribedBy' in existing()) || incoming().prescribedBy == existing().prescribedBy);
+      allow delete: if isValidId(recipeId) && isAdmin();
     }
   }
 }

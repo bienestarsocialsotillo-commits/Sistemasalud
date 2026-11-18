@@ -46,8 +46,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
 
       let finalRecipes = r;
-      // Opción 2: Escaneo de verificación y movilización masiva a derivación de forma transparente y sin botones
-      const candidates = r.filter(item => item.category !== 'medical_derivation' && isClinicalDerivationItem(item));
+      const canAdminUpdate = user.role === 'admin' || user.role === 'superadmin';
+      // Opción 2: Escaneo de verificación y movilización masiva a derivación de forma transparente y sin botones (solo administradores)
+      const candidates = canAdminUpdate
+        ? r.filter(item => item.category !== 'medical_derivation' && isClinicalDerivationItem(item))
+        : [];
       if (candidates.length > 0) {
         try {
           const { reclassifiedIds } = await dataService.reclassifyClinicalSuppliesToDerivations(r);
