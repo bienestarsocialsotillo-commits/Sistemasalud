@@ -31,7 +31,7 @@ export default function DeleteConfirmationDialog({
 }: DeleteConfirmationDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isDeleting) onClose(); }}>
-      <DialogContent className="max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-red-100 animate-in fade-in zoom-in-95 duration-200">
+      <DialogContent className="w-[94vw] sm:w-full max-w-[94vw] sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl border border-red-100 animate-in fade-in zoom-in-95 duration-200">
         <DialogHeader className="space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-inner mx-auto sm:mx-0">
             <AlertTriangle className="w-6 h-6 animate-pulse" />

@@ -1569,9 +1569,9 @@ export default function WorkerExpediente({ worker, onClose, autoOpenRecipe = fal
       </Tabs>
 
       <Dialog open={isRecipeDialogOpen} onOpenChange={setIsRecipeDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-[85vw] lg:max-w-5xl xl:max-w-6xl w-full max-h-[95vh] overflow-y-auto p-0 border-none shadow-2xl">
-          <DialogHeader className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200">
-            <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-lg sm:text-xl text-center sm:text-left">Registrar Entrega de Fármacos</DialogTitle>
+        <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-5xl xl:max-w-6xl max-h-[93dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-6 pr-12 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-base sm:text-xl text-left">Registrar Entrega de Fármacos</DialogTitle>
           </DialogHeader>
           <div className="p-4 sm:p-8 lg:p-10">
             <RecipeForm 
@@ -1591,9 +1591,9 @@ export default function WorkerExpediente({ worker, onClose, autoOpenRecipe = fal
       </Dialog>
 
       <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-[85vw] lg:max-w-5xl xl:max-w-6xl w-full max-h-[95vh] overflow-y-auto p-0 border-none shadow-2xl">
-          <DialogHeader className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200">
-            <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-lg sm:text-xl text-center sm:text-left">
+        <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-5xl xl:max-w-6xl max-h-[93dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-6 pr-12 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-base sm:text-xl text-left">
               {history ? "Actualizar Expediente Médico" : "Registrar Expediente Médico"}
             </DialogTitle>
           </DialogHeader>
@@ -1611,10 +1611,10 @@ export default function WorkerExpediente({ worker, onClose, autoOpenRecipe = fal
       </Dialog>
 
       <Dialog open={!!selectedRecipeForView} onOpenChange={(open) => { if (!open) setSelectedRecipeForView(null); }}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl">
-          <DialogHeader className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200">
-            <DialogTitle className="uppercase font-black text-blue-900 text-base sm:text-lg flex items-center gap-2">
-              <Paperclip className="w-5 h-5 text-blue-600" />
+        <DialogContent className="w-[95vw] sm:w-[90vw] max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-6 pr-12 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="uppercase font-black text-blue-900 text-sm sm:text-lg flex items-center gap-2">
+              <Paperclip className="w-5 h-5 text-blue-600 shrink-0" />
               Soporte Digital de Solicitud de Paciente
             </DialogTitle>
           </DialogHeader>

@@ -559,8 +559,8 @@ Reporte oficial emitido para control de gestión, contraloría social y supervis
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[96vw] md:max-w-[92vw] lg:max-w-5xl xl:max-w-6xl w-full max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
-        <DialogHeader className="p-3.5 sm:p-5 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20">
+      <DialogContent className="w-[96vw] sm:w-[94vw] max-w-[96vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[92dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+        <DialogHeader className="p-3.5 sm:p-5 pr-14 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 sticky top-0 z-20">
           <div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">

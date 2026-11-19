@@ -169,10 +169,10 @@ export default function DuplicateAuditModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent className="w-[98vw] sm:w-[96vw] max-w-full lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1560px] h-[95vh] sm:h-[92vh] max-h-[96vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 border border-slate-200 rounded-2xl sm:rounded-3xl shadow-2xl">
+        <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1520px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 border border-slate-200 rounded-xl sm:rounded-3xl shadow-2xl">
           
           {/* Cabecera Fija */}
-          <DialogHeader className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white p-4 sm:p-5 md:p-6 shrink-0 relative border-b border-blue-900/60">
+          <DialogHeader className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white p-4 sm:p-5 md:p-6 pr-14 shrink-0 relative border-b border-blue-900/60">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-start gap-3">
                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-300 flex items-center justify-center shrink-0 shadow-inner mt-0.5">
@@ -468,7 +468,7 @@ export default function DuplicateAuditModal({
       {/* Modal Seguro de Confirmación de Fusión */}
       {candidateForMerge && (
         <Dialog open={!!candidateForMerge} onOpenChange={(open) => { if (!open) setCandidateForMerge(null); }}>
-          <DialogContent className="max-w-md w-full p-5 rounded-2xl bg-white border border-slate-200 shadow-2xl space-y-4">
+          <DialogContent className="w-[94vw] sm:w-full max-w-[94vw] sm:max-w-md max-h-[90dvh] overflow-y-auto p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white border border-slate-200 shadow-2xl space-y-4">
             <DialogHeader className="space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
                 <Merge className="w-6 h-6" />

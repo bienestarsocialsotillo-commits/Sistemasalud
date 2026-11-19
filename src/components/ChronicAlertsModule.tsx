@@ -1358,8 +1358,8 @@ export default function ChronicAlertsModule() {
         open={!!selectedProcurementItem} 
         onOpenChange={(open) => { if (!open) setSelectedProcurementItem(null); }}
       >
-        <DialogContent className="max-w-3xl w-full max-h-[85vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
-          <DialogHeader className="p-5 bg-gradient-to-r from-blue-950 to-slate-900 text-white border-b border-blue-900">
+        <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-4xl lg:max-w-5xl max-h-[90dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-5 pr-12 bg-gradient-to-r from-blue-950 to-slate-900 text-white border-b border-blue-900">
             <div className="flex items-center gap-2">
               <Pill className="w-5 h-5 text-cyan-400" />
               <DialogTitle className="text-base font-black uppercase text-white">
@@ -1389,7 +1389,7 @@ export default function ChronicAlertsModule() {
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-[50vh] overflow-y-auto">
+            <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[50dvh] overflow-y-auto">
               <Table>
                 <TableHeader className="bg-slate-100/80">
                   <TableRow>

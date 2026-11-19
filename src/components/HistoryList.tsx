@@ -107,9 +107,9 @@ export default function HistoryList() {
                              <FileText className="w-3.5 h-3.5 mr-2" /> Editar Antecedentes
                           </Button>
                         } />
-                        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle className="font-black text-blue-900 uppercase">Ficha de Antecedentes - {worker.fullName}</DialogTitle>
+                        <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6 rounded-xl sm:rounded-2xl">
+                          <DialogHeader className="pr-10">
+                            <DialogTitle className="font-black text-blue-900 uppercase text-sm sm:text-base">Ficha de Antecedentes - {worker.fullName}</DialogTitle>
                             <CardDescription className="uppercase text-[10px] font-bold">Municipio Sotillo - Bienestar Social</CardDescription>
                           </DialogHeader>
                           <div className="mt-4">

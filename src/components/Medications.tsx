@@ -735,9 +735,9 @@ export default function Medications() {
           setPreselectedWorkerForRecipe(null);
         }
       }}>
-        <DialogContent className="max-w-[96vw] md:max-w-[90vw] lg:max-w-4xl xl:max-w-5xl w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
-          <DialogHeader className="p-3.5 sm:p-5 bg-slate-50 border-b border-slate-200">
-            <DialogTitle className="uppercase font-black text-blue-900 text-base sm:text-lg text-center sm:text-left">
+        <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-3.5 sm:p-5 pr-12 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="uppercase font-black text-blue-900 text-sm sm:text-lg text-left">
               {preselectedWorkerForRecipe 
                 ? `Registrar Solicitud / Entrega para: ${preselectedWorkerForRecipe.fullName}` 
                 : "Registrar Solicitud, Entrega o Derivación Médica"}
@@ -1814,10 +1814,10 @@ export default function Medications() {
       )}
 
       <Dialog open={!!selectedRecipeForView} onOpenChange={(open) => { if (!open) setSelectedRecipeForView(null); }}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto p-0 border-none shadow-2xl">
-          <DialogHeader className="p-4 sm:p-6 bg-slate-50 border-b border-slate-200">
-            <DialogTitle className="uppercase font-black text-blue-900 text-base sm:text-lg flex items-center gap-2">
-              <Paperclip className="w-5 h-5 text-blue-600" />
+        <DialogContent className="w-[95vw] sm:w-[90vw] max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <DialogHeader className="p-4 sm:p-6 pr-12 bg-slate-50 border-b border-slate-200">
+            <DialogTitle className="uppercase font-black text-blue-900 text-sm sm:text-lg flex items-center gap-2">
+              <Paperclip className="w-5 h-5 text-blue-600 shrink-0" />
               Soporte Digital de Solicitud de Paciente
             </DialogTitle>
           </DialogHeader>

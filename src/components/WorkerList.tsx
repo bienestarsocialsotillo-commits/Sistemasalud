@@ -309,9 +309,9 @@ export default function WorkerList() {
                 Nueva Ficha
               </Button>
             } />
-            <DialogContent className="max-w-[96vw] md:max-w-[90vw] lg:max-w-4xl xl:max-w-5xl w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
-              <DialogHeader className="p-3.5 sm:p-5 bg-slate-50 border-b border-slate-200">
-                <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-base sm:text-lg text-center sm:text-left">Registro de Nuevo Trabajador / Paciente</DialogTitle>
+            <DialogContent className="w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+              <DialogHeader className="p-3.5 sm:p-5 pr-12 bg-slate-50 border-b border-slate-200">
+                <DialogTitle className="uppercase font-black text-blue-900 tracking-tight text-sm sm:text-lg text-left">Registro de Nuevo Trabajador / Paciente</DialogTitle>
               </DialogHeader>
               <div className="p-3 sm:p-6 md:p-7">
                 <WorkerForm 
@@ -342,9 +342,9 @@ export default function WorkerList() {
           </Dialog>
 
           <Dialog open={!!actionType} onOpenChange={(val) => !val && setActionType(null)}>
-          <DialogContent className={actionType === 'expediente' ? "max-w-[96vw] xl:max-w-[1400px] w-full h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl" : "max-w-[95vw] md:max-w-[85vw] lg:max-w-4xl xl:max-w-5xl w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl"}>
+          <DialogContent className={actionType === 'expediente' ? "w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1440px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl" : "w-[96vw] sm:w-[92vw] max-w-[96vw] md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl"}>
             {actionType !== 'expediente' && (
-              <DialogHeader className="p-3.5 sm:p-5 bg-slate-50 border-b border-slate-200">
+              <DialogHeader className="p-3.5 sm:p-5 pr-12 bg-slate-50 border-b border-slate-200">
                 <DialogTitle className="uppercase font-black text-blue-900 text-sm sm:text-base tracking-tight">
                   {actionType === 'history' && `Antecedentes Médicos: ${selectedWorker?.fullName}`}
                   {actionType === 'evaluation' && `Nueva Evaluación: ${selectedWorker?.fullName}`}

@@ -179,8 +179,8 @@ export default function NoRequirementsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] lg:max-w-6xl w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl">
-        <DialogHeader className="p-4 sm:p-6 bg-slate-900 text-white border-b border-slate-800">
+      <DialogContent className="w-[96vw] sm:w-[94vw] max-w-[96vw] md:max-w-4xl lg:max-w-6xl max-h-[92dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+        <DialogHeader className="p-4 sm:p-6 pr-14 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">

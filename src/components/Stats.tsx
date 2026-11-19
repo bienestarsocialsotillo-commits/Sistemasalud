@@ -1832,7 +1832,7 @@ export default function Stats() {
         open={!!selectedWorkerForExpediente} 
         onOpenChange={(open) => !open && setSelectedWorkerForExpediente(null)}
       >
-        <DialogContent className="z-[70] max-w-[96vw] xl:max-w-[1400px] w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
+        <DialogContent className="z-[70] w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1440px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
           {selectedWorkerForExpediente && (
             <WorkerExpediente 
               worker={selectedWorkerForExpediente} 

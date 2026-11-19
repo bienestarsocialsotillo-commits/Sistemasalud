@@ -60,8 +60,8 @@ export default function HealthMatrixModal({ open, onOpenChange, onSelectService 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[98vw] md:max-w-6xl xl:max-w-7xl max-h-[92vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-2xl bg-white">
-        <DialogHeader className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-5 sm:p-6 shrink-0">
+      <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] md:max-w-5xl lg:max-w-6xl xl:max-w-7xl h-[92dvh] max-h-[92dvh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-xl sm:rounded-2xl bg-white">
+        <DialogHeader className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-4 sm:p-6 pr-14 shrink-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">

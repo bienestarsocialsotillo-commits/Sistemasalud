@@ -47,13 +47,18 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  const classNameStr = typeof className === "string" ? className : ""
+  const hasCustomMaxW = /\b(?:sm:|md:|lg:|xl:|2xl:)?max-w-/.test(classNameStr)
+  const hasCustomPaddingZero = /\bp-0\b/.test(classNameStr)
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 flex flex-col w-[calc(100vw-1rem)] sm:w-full max-w-[calc(100vw-1rem)] max-h-[92dvh] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          !hasCustomPaddingZero && "gap-3",
+          !hasCustomMaxW && "sm:max-w-lg",
           className
         )}
         {...props}
@@ -65,13 +70,12 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-2 right-2"
+                className="absolute top-3 right-3 z-30 h-8 w-8 rounded-full bg-white/90 text-slate-700 hover:bg-white hover:text-slate-900 shadow-xs border border-slate-200/80 print:hidden cursor-pointer"
                 size="icon-sm"
               />
             }
           >
-            <XIcon
-            />
+            <XIcon className="w-4 h-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

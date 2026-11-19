@@ -1468,7 +1468,7 @@ export default function Dashboard() {
           open={!!selectedWorkerForExpediente}
           onOpenChange={(open) => !open && setSelectedWorkerForExpediente(null)}
         >
-          <DialogContent className="w-[98vw] sm:w-[98vw] max-w-[98vw] xl:max-w-[1600px] sm:max-w-[98vw] h-[95vh] max-h-[96vh] overflow-y-auto p-0 border-none shadow-2xl bg-white z-[60] rounded-2xl">
+          <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1500px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl bg-white z-[60] rounded-xl sm:rounded-2xl">
             <WorkerExpediente
               worker={selectedWorkerForExpediente}
               onClose={() => setSelectedWorkerForExpediente(null)}

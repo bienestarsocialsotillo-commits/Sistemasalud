@@ -866,10 +866,10 @@ Padrón Nominal extraído formalmente del Sistema de Gestión y Bienestar Social
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[96vw] xl:max-w-[1300px] w-full max-h-[94vh] overflow-hidden flex flex-col p-0 rounded-2xl border-slate-200 shadow-2xl bg-slate-50">
+        <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1340px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-hidden flex flex-col p-0 rounded-xl sm:rounded-2xl border-slate-200 shadow-2xl bg-slate-50">
           
           {/* ENCABEZADO INSTITUCIONAL */}
-          <DialogHeader className="bg-slate-900 text-white p-4 sm:p-5 shrink-0 border-b border-slate-800">
+          <DialogHeader className="bg-slate-900 text-white p-4 sm:p-5 pr-14 shrink-0 border-b border-slate-800">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md">
@@ -1404,7 +1404,7 @@ Padrón Nominal extraído formalmente del Sistema de Gestión y Bienestar Social
         open={!!selectedWorkerForExpediente} 
         onOpenChange={(open) => !open && setSelectedWorkerForExpediente(null)}
       >
-        <DialogContent className="z-[80] max-w-[96vw] xl:max-w-[1400px] w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl rounded-2xl">
+        <DialogContent className="z-[80] w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1440px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
           {selectedWorkerForExpediente && (
             <WorkerExpediente 
               worker={selectedWorkerForExpediente} 

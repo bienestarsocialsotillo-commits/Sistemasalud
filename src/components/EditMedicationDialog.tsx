@@ -177,8 +177,8 @@ export default function EditMedicationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
-      <DialogContent className="max-w-2xl bg-white rounded-2xl p-6 sm:p-7 shadow-2xl border border-blue-100 max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="space-y-2 border-b border-slate-100 pb-4">
+      <DialogContent className="w-[95vw] sm:w-[90vw] max-w-[95vw] sm:max-w-xl md:max-w-2xl bg-white rounded-xl sm:rounded-2xl p-4 sm:p-7 shadow-2xl border border-blue-100 max-h-[90dvh] overflow-y-auto">
+        <DialogHeader className="space-y-2 border-b border-slate-100 pb-4 pr-10">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 shadow-inner">
               <Pencil className="w-5 h-5" />

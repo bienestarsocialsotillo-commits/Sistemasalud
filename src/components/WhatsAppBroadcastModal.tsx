@@ -23,7 +23,7 @@ export default function WhatsAppBroadcastModal({
 }: WhatsAppBroadcastModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[96vw] xl:max-w-[1360px] w-full max-h-[95vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border-slate-200 shadow-2xl bg-slate-100">
+      <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1360px] max-h-[94dvh] overflow-y-auto p-3 sm:p-6 rounded-xl sm:rounded-2xl border-slate-200 shadow-2xl bg-slate-100">
         <WhatsAppBroadcast
           workers={workers}
           recipes={recipes}

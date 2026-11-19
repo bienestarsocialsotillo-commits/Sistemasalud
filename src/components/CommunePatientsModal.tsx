@@ -236,9 +236,9 @@ export default function CommunePatientsModal({
   return (
     <>
       <Dialog open={isOpen && !selectedWorkerForExpediente} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[96vw] xl:max-w-6xl w-full max-h-[92vh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden rounded-2xl">
+        <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-5xl xl:max-w-6xl h-[92dvh] max-h-[94dvh] flex flex-col p-0 border-none shadow-2xl bg-white overflow-hidden rounded-xl sm:rounded-2xl">
           {/* Header section with Commune Branding */}
-          <DialogHeader className="p-5 sm:p-6 bg-gradient-to-r from-blue-900 via-blue-950 to-slate-900 text-white border-b border-blue-800 shrink-0">
+          <DialogHeader className="p-4 sm:p-6 pr-14 bg-gradient-to-r from-blue-900 via-blue-950 to-slate-900 text-white border-b border-blue-800 shrink-0">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -570,7 +570,7 @@ export default function CommunePatientsModal({
           open={!!selectedWorkerForExpediente}
           onOpenChange={(open) => !open && setSelectedWorkerForExpediente(null)}
         >
-          <DialogContent className="max-w-[96vw] xl:max-w-[1400px] w-full max-h-[92vh] overflow-y-auto p-0 border-none shadow-2xl bg-white rounded-2xl z-[60]">
+          <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1440px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl bg-white rounded-xl sm:rounded-2xl z-[60]">
             <WorkerExpediente
               worker={selectedWorkerForExpediente}
               onClose={() => setSelectedWorkerForExpediente(null)}

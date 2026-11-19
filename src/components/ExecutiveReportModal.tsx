@@ -293,7 +293,7 @@ export default function ExecutiveReportModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent 
-        className="w-[96vw] sm:w-[94vw] lg:w-[92vw] xl:max-w-6xl h-[92vh] max-h-[94vh] p-0 flex flex-col overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-2xl print:border-none print:shadow-none print:m-0 print:p-0 print:w-full print:max-w-none print:h-auto print:max-h-none print:rounded-none"
+        className="w-[96vw] sm:w-[95vw] max-w-[96vw] md:max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1440px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] p-0 flex flex-col overflow-hidden bg-white border border-slate-200 rounded-xl sm:rounded-2xl shadow-2xl print:border-none print:shadow-none print:m-0 print:p-0 print:w-full print:max-w-none print:h-auto print:max-h-none print:rounded-none"
       >
         
         {/* Print Styles for OFICIO (Legal Landscape) and verified margins */}
@@ -313,7 +313,7 @@ export default function ExecutiveReportModal({
         }} />
 
         {/* Top Sticky Header Bar (Optimized for Mobile & Desktop) - Hidden in Print */}
-        <div className="bg-slate-900 text-white px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between gap-3 shrink-0 border-b border-slate-800 print:hidden z-10">
+        <div className="bg-slate-900 text-white px-4 py-3 sm:px-6 sm:py-3.5 pr-14 sm:pr-14 flex flex-wrap items-center justify-between gap-3 shrink-0 border-b border-slate-800 print:hidden z-10">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-blue-600/30 text-blue-300 flex items-center justify-center shrink-0 border border-blue-500/40">
               <FileText className="w-4 h-4" />

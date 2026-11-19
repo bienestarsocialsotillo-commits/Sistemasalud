@@ -407,10 +407,10 @@ export default function CategoryPatientsModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="w-[98vw] sm:w-[96vw] max-w-full lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1560px] h-[95vh] sm:h-[92vh] max-h-[96vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 border-slate-200 rounded-2xl shadow-2xl">
+        <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1520px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-50 border-slate-200 rounded-xl sm:rounded-2xl shadow-2xl">
           
           {/* Header */}
-          <DialogHeader className="p-4 sm:p-5 md:p-6 bg-white border-b border-slate-200 shrink-0">
+          <DialogHeader className="p-4 sm:p-5 md:p-6 pr-14 bg-white border-b border-slate-200 shrink-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${categoryConfig.colorClass}`}>
@@ -906,7 +906,7 @@ export default function CategoryPatientsModal({
           open={!!selectedWorkerForExpediente}
           onOpenChange={(open) => !open && setSelectedWorkerForExpediente(null)}
         >
-          <DialogContent className="w-[98vw] sm:w-[98vw] max-w-[98vw] xl:max-w-[1600px] sm:max-w-[98vw] h-[95vh] max-h-[96vh] overflow-y-auto p-0 border-none shadow-2xl bg-white z-[70] rounded-2xl">
+          <DialogContent className="w-[96vw] sm:w-[95vw] max-w-[96vw] lg:max-w-6xl xl:max-w-[1500px] h-[94dvh] sm:h-[92dvh] max-h-[94dvh] overflow-y-auto p-0 border-none shadow-2xl bg-white z-[70] rounded-xl sm:rounded-2xl">
             <WorkerExpediente
               worker={selectedWorkerForExpediente}
               onClose={() => setSelectedWorkerForExpediente(null)}

@@ -1648,8 +1648,8 @@ export default function WorkerForm({
 
       {/* Diálogo Estandarizador para Menores sin Cédula */}
       <Dialog open={minorModalOpen} onOpenChange={setMinorModalOpen}>
-        <DialogContent className="max-w-md w-full p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-          <div className="bg-gradient-to-r from-indigo-950 via-blue-900 to-indigo-900 text-white p-5">
+        <DialogContent className="w-[94vw] sm:w-full max-w-[94vw] sm:max-w-md max-h-[90dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <div className="bg-gradient-to-r from-indigo-950 via-blue-900 to-indigo-900 text-white p-4 sm:p-5 pr-12">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 flex items-center justify-center shrink-0">
                 <Baby className="w-5 h-5 text-indigo-300" />
@@ -1729,8 +1729,8 @@ export default function WorkerForm({
 
       {/* Ventana de Confirmación Inmediata con Acciones Clave (Modal Post-Guardado - Opción 1) */}
       <Dialog open={!!savedWorkerModal} onOpenChange={(open) => { if (!open) handleCloseModal(); }}>
-        <DialogContent className="max-w-xl w-full p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-6 relative">
+        <DialogContent className="w-[95vw] sm:w-full max-w-[95vw] sm:max-w-xl max-h-[90dvh] overflow-y-auto p-0 border-none shadow-2xl rounded-xl sm:rounded-2xl">
+          <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-900 text-white p-4 sm:p-6 pr-12 relative">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shrink-0 shadow-inner">
                 <CheckCircle2 className="w-7 h-7 text-emerald-400" />
